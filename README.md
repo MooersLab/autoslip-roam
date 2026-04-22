@@ -4,7 +4,7 @@
 [![Emacs](https://img.shields.io/badge/Emacs-27.1+-blueviolet.svg)](https://www.gnu.org/software/emacs/)
 [![org-roam](https://img.shields.io/badge/org--roam-2.0+-green.svg)](https://www.orgroam.com/)
 
-Automatic folgezettel (Luhmann-style) bidirectional link generation for [org-roam](https://www.orgroam.com/).
+Automatic folgezettel (related to the Luhmann-style but compatible with computer filenames) bidirectional link generation for [org-roam](https://www.orgroam.com/).
 This package uses the folgezettel index to determine the parent-child relationship and uses that relationship to create the directional links automatically.
 The index is placed before the title of the note and is compatible with the org-roam file naming system.
 
