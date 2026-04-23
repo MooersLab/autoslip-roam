@@ -605,6 +605,10 @@ cross-linked chains of thought, reparenting, and the quiet property-drawer
 storage mode) are covered by 100 ERT tests that run under `make test`.
 Feedback and patches are welcome via the issue tracker.
 
+## What is missing?
+
+- Automatically adding folgezettel indices to an existing org-roam zettelkasten.
+
 ## Update history
 
 | Version | Changes | Date |
