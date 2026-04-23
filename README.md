@@ -605,9 +605,32 @@ cross-linked chains of thought, reparenting, and the quiet property-drawer
 storage mode) are covered by 100 ERT tests that run under `make test`.
 Feedback and patches are welcome via the issue tracker.
 
-## What is missing?
+## Additional considerations for existing org-roam users
 
-- Automatically adding folgezettel indices to an existing org-roam zettelkasten.
+## What if you have an existing zettelkasten in org-roam without folgezettel indices?
+
+If you already have a set of topic nodes, perhaps at one level below a master node, you can use them as the root nodes. You will need to number these. I maintain a file called 00. Index of Indices that contains the list of numbered root nodes.
+
+If you have a large graph that was developed from the bottom up, you could ask AI agents to identify candidate root nodes. You could then edit and number these and then ask the agents to apply the numbering scheme described above while honoring the existing links.
+
+## How to export to paper?
+
+My approach is to export the note to PDF, then print it. 
+I added a LaTeX preamble drawer to my template for notes to provide a compact format to save paper.
+
+```org-mode
+:PREAMBLE:
+#+Options: toc:nil \n:nil num:nil
+#+STARTUP: noindent overview
+#+LaTeX_CLASS: article
+#+LaTeX_CLASS_OPTIONS: [11pt,letterpaper]
+#+LaTeX_HEADER:\usepackage[letterpaper, total={7in, 9in}]{geometry} % good with line numbers
+#+LATEX_HEADER:\usepackage{parskip} % add a blank line between paragraphs upon export to PDF.
+#+LATEX_HEADER:\usepackage[all=subtle,title=normal]{savetrees}
+:END:
+```
+
+
 
 ## Update history
 
