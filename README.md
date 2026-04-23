@@ -4,9 +4,10 @@
 [![Emacs](https://img.shields.io/badge/Emacs-27.1+-blueviolet.svg)](https://www.gnu.org/software/emacs/)
 [![org-roam](https://img.shields.io/badge/org--roam-2.0+-green.svg)](https://www.orgroam.com/)
 
-Automatic folgezettel (Luhmann-style) bidirectional link generation for [org-roam](https://www.orgroam.com/).
-This package uses the folgezettel index to determine the parent-child relationship and uses that relationship to create the directional links automatically.
-The index is placed before the title of the note and is compatible with the org-roam file naming system.
+Automatic folgezettel (computer-compatible Luhmann-style) bidirectional link generation for [org-roam](https://www.orgroam.com/).
+This package uses the folgezettel index to determine the parent-child relationship and automatically creates directional links based on that relationship.
+The index is placed before the note title and is compatible with the org-roam file-naming system.
+It is also compatible with printing the note for storage in a paper zettelkasten.
 
 ## What problems are addressed by this plugin?
 
@@ -14,13 +15,13 @@ The index is placed before the title of the note and is compatible with the org-
 Electronic zettelkastens rely on reciprocal hyperlinks to relate parent and child notes. 
 The manual insertion of these links is error-prone and time-consuming. 
 This package provides true automation for creating these links by leveraging the parent-child relationship defined in the indexing system. 
-You do not need to click a button to add the links; they are added automatically.
+You do not need to click a button to add the links; they are added automatically, out of sight and out of mind.
 
 ## Support for export to a paper-based zettelkasten
-The folgezettel index determines the order in which a new note is to be placed in a series on notes in a paper-based zettelkasten.
+The folgezettel index determines the order in which a new note is to be placed in a series of notes in a paper-based zettelkasten.
 The ability to print these indices with the notes provides a bridge between electronic and paper-based zettelkastens.
-This bridge supports hybrid approaches, mirror approaches, and project-based approaches.
-In the project-based approach, the notes on paper are used during the assembly of manuscripts where the notes are ordered and rearranged on a physical tabletop or corkboard.
+This bridge supports hybrid, mirror, and project-based approaches.
+In the project-based approach, notes on paper are used during the assembly of manuscripts, where they are ordered and rearranged on a physical tabletop or corkboard.
 
 Most electronic zettelkastens rely either on timestamps or a database ID to identify each unique note. 
 This approach is hopeless if one wants to print out their zettels to store them in a paper-based zettelkasten. 
@@ -28,15 +29,15 @@ Fans of the paper-based approach may object that you should write these notes by
 This may be true, but more frequent perusal of the paper zettelkasten may be compensatory and possibly more effective in the long term. 
 Often, there is just not enough time available to rewrite the notes by hand.
 
-There is no rule against mixing handwritten and printed notes together. The inclusion of the folgezettel index in the title tells the user where to store the note. Paper-based zettelkastens rely on the folgezettel index (also called the Luhmann-style index or the Scott Scheper index) to specify the linear order of note storage. There is a one-to-one mapping between the zettelkasten graph and the order in which the notes are stored.
+There is no rule against mixing handwritten and printed notes together. The inclusion of the folgezettel index in the title indicates where to store the note. Paper-based zettelkastens rely on the folgezettel index (also called the Luhmann-style index or the Scott Scheper index) to specify the linear order of note storage. There is a one-to-one mapping between the zettelkasten graph and the order in which the notes are stored.
 
 This approach supports a hybrid zettelkasten, with part electronic and part paper-based. Of course, it also supports a mirrored zettelkasten in both paper and electronic form.
 
-You can print a note on US letter-size paper, fold it in half with the title on the outside, and store it in this zettelkasten. This folded paper corresponds to A5-sized paper. Luhmann used the smaller A6-sized paper.
+You can print a note on US letter-size paper, fold it in half with the title facing outward, and store it in this zettelkasten. This folded paper corresponds to A5-sized paper. Luhmann used the smaller A6-sized paper.
 
-If the note spans multiple pages, as may be the case with a structure note, keyword note, structure note, or hub note, you can fold the pages in half together. You can also save paper and space by printing on both sides, resulting in a booklet with two pages per side. For example, an eight-page note would span both sides of two sheets of US letter paper. The text will be rotated by 90°, so you will need to write the index across the top of the outside side of the folded paper. I favor this approach over index cards because it provides more space and because US Letter printer paper is cheaper and more readily available. This more practical approach reduces the friction of adding new notes to your paper-based zettelkasten.
+If the note spans multiple pages, as may be the case with a structure note, keyword note, structure note, or hub note, you can fold the pages in half together. You can also save paper and space by printing double-sided, resulting in a booklet with two pages per side. For example, an eight-page note would span both sides of two sheets of US letter paper. The text will be rotated by 90°, so you will need to write the index across the top of the outside side of the folded paper. I favor this approach over index cards because it provides more space and because US Letter printer paper is cheaper and more readily available. This more practical approach reduces the friction of adding new notes to your paper-based zettelkasten.
 
-Obsidian offers a fantastic, infinite canvas for displaying and organizing notes in all kinds of configurations. The ability to print out the notes opens up the opportunity to work with paper versions on a large tabletop or a corkboard. Sometimes changing the context from an electronic format to a physical format can stimulate the mind. This alternative physical approach to arranging notes is useful when using the notes in assembling a manuscript. You can use the canvas to combine all the notes you want to print. This could be useful for one-off tasks, such as assembling a manuscript, where you may discard the paper notes when you are done.
+Obsidian offers a fantastic, infinite canvas for displaying and organizing notes in all kinds of configurations. The ability to print out the notes opens up the opportunity to work with paper versions on a large tabletop or a corkboard. Sometimes, changing the context from electronic to physical can stimulate the mind. This alternative physical approach to arranging notes is useful when using them to assemble a manuscript. You can use the canvas to combine all the notes you want to print. This could be useful for one-off tasks, such as assembling a manuscript, where you may discard the paper notes when you are done.
 
 
 
@@ -345,7 +346,7 @@ and the reparent commands.
 ### Navigation
 
 `autoslip-roam-goto-parent` walks from the current note to the node
-whose folgezettel address is one step shallower and opens it. It errors
+whose folgezettel address is one step shallower and opens it. This function errors
 helpfully when the current note is a root.
 
 `autoslip-roam-list-children` offers a completion list of every direct
@@ -374,7 +375,7 @@ comes from `autoslip-roam-chain-heading` (set to nil for no heading).
 ### Cross-linked Chains of Thought
 
 `autoslip-roam-show-crosslinked-chains` is for the moment when you
-have notes cross-linked to the current note and you want to understand the
+have notes cross-linked to the current note, and you want to understand the
 context each of those cross-linked notes sits in, not just its title. The
 command reads every `[[id:...]]` under the Cross References heading of the
 current note, looks up each target note, and renders one ancestor chain
@@ -522,7 +523,7 @@ M-x info RET m Autoslip Roam RET
 
 ### Parent Note Not Found
 
-1. Verify the parent exists with correct folgezettel in title
+1. Verify the parent exists with the correct folgezettel in title
 2. Run `M-x org-roam-db-sync` to update the database
 3. Use `M-x autoslip-roam-diagnose-address` to debug
 
