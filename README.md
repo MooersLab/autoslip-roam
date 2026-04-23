@@ -19,7 +19,7 @@ The manual insertion of these links is error-prone and time-consuming.
 This package provides true automation for creating these links by leveraging the parent-child relationship defined in the indexing system. 
 You do not need to click a button to add the links; they are added automatically, out of sight and out of mind.
 
-## Support for export to a paper-based zettelkasten
+### Bridge to a paper-based zettelkasten
 The folgezettel index determines the order in which a new note is to be placed in a series of notes in a paper-based zettelkasten.
 The ability to print these indices with the notes provides a bridge between electronic and paper-based zettelkastens.
 This bridge supports hybrid, mirror, and project-based approaches.
@@ -31,16 +31,19 @@ Fans of the paper-based approach may object that you should write these notes by
 This may be true, but more frequent perusal of the paper zettelkasten may be compensatory and possibly more effective in the long term. 
 Often, there is just not enough time available to rewrite the notes by hand.
 
-There is no rule against mixing handwritten and printed notes together. The inclusion of the folgezettel index in the title indicates where to store the note. Paper-based zettelkastens rely on the folgezettel index (also called the Luhmann-style index or the Scott Scheper index) to specify the linear order of note storage. There is a one-to-one mapping between the zettelkasten graph and the order in which the notes are stored.
+There is no rule against mixing handwritten and printed notes together. The inclusion of the folgezettel index in the title indicates where to store the note. Paper-based zettelkastens rely on the folgezettel index (or alternatively the Luhmann-style index or the Scott Scheper index, both of which are not computer-compatible) to specify the linear order of note storage. There is a one-to-one mapping between the zettelkasten graph and the order in which the notes are stored.
 
 This approach supports a hybrid zettelkasten, with part electronic and part paper-based. Of course, it also supports a mirrored zettelkasten in both paper and electronic form.
 
 You can print a note on US letter-size paper, fold it in half with the title facing outward, and store it in this zettelkasten. This folded paper corresponds to A5-sized paper. Luhmann used the smaller A6-sized paper.
 
-If the note spans multiple pages, as may be the case with a structure note, keyword note, structure note, or hub note, you can fold the pages in half together. You can also save paper and space by printing double-sided, resulting in a booklet with two pages per side. For example, an eight-page note would span both sides of two sheets of US letter paper. The text will be rotated by 90°, so you will need to write the index across the top of the outside side of the folded paper. I favor this approach over index cards because it provides more space and because US Letter printer paper is cheaper and more readily available. This more practical approach reduces the friction of adding new notes to your paper-based zettelkasten.
+If the note spans multiple pages, as may be the case with a structure, keyword, or hub note, you can fold the pages in half together. You can also save paper and space by printing double-sided, resulting in a booklet with two pages per side. For example, an eight-page note would span both sides of two sheets of US letter paper. The text will be rotated by 90°, so you will need to write the index across the top of the outside side of the folded paper. I favor this approach over index cards because it provides more space and because US Letter printer paper is cheaper and more readily available. This more practical approach reduces the friction of adding new notes to your paper-based zettelkasten.
 
-Obsidian offers a fantastic, infinite canvas for displaying and organizing notes in all kinds of configurations. The ability to print out the notes opens up the opportunity to work with paper versions on a large tabletop or a corkboard. Sometimes, changing the context from electronic to physical can stimulate the mind. This alternative physical approach to arranging notes is useful when using them to assemble a manuscript. You can use the canvas to combine all the notes you want to print. This could be useful for one-off tasks, such as assembling a manuscript, where you may discard the paper notes when you are done.
+Obsidian offers a fantastic, infinite canvas for displaying and organizing notes in all kinds of configurations. The ability to print out the notes opens up the opportunity to work with paper versions on a large tabletop or a corkboard. Sometimes, changing the context from electronic to physical can stimulate the mind. This alternative physical approach to arranging notes is useful when assembling a manuscript. You can use the canvas to combine all the notes you want to print. This could be useful for one-off tasks, such as assembling a manuscript, where you may discard the paper notes when you are done.
 
+### Adding some order to the zettelkasten
+
+Some hierarchical order is necessary to ease navigation of the zettelkasten because keyword searching does not guarantee that you will retrieve all relevant notes. Luhmann's paper version had order provided by his indexing system. Disorder was provided by cross-links between notes. According to Luhmann, you need both order and disorder. The optimal mix of order and disorder will probably vary with project and user. Luhmann's indexing system started with root nodes numbered with integers, separated by backslashes from the indices of the descendant nodes. I recommend spending an hour early on identifying a list of areas of knowledge you want to store notes on in the zettelkasten. These areas can serve as your root nodes. You can expand this list as your interests evolve.
 
 
 ## Table of Contents
@@ -61,29 +64,29 @@ Obsidian offers a fantastic, infinite canvas for displaying and organizing notes
 
 ## Overview
 
-Autoslip Roam brings Niklas Luhmann's folgezettel (follow-up slip) numbering system to org-roam. 
+Autoslip-roam brings the folgezettel numbering system to org-roam. 
 When you create a note with a folgezettel address in its title (e.g., "1.2a My Topic"), the package automatically:
 
-1. Identifies the parent note based on the address hierarchy
-2. Inserts a backlink to the parent in the new note
-3. Inserts a forward link to the child in the parent note
+1. Identifies the parent note based on the address hierarchy.
+2. Inserts a backlink to the parent in the new note.
+3. Inserts a forward link to the child in the parent note.
 
-This creates a seamlessly navigable hierarchy of interconnected notes.
+This creates a navigable hierarchy of interconnected notes.
 
 ## Features
 
-- **Automatic Bidirectional Linking** - Parent and child notes are linked automatically
-- **Address Validation** - Prevents invalid folgezettel addresses
-- **Duplicate Detection** - Warns if an address is already in use
-- **Smart Suggestions** - Suggests the next available child address
-- **Cross-Reference Links** - Automatic reciprocal links when inserting manual links
-- **Database Sync** - Immediate visibility in org-roam graph and queries
-- **Extended Alphabet** - Supports aa, ab, ..., zz, aaa, ... after z
-- **Navigation Commands** - Jump to parent, list children, or show a tree view of the vault
-- **Chain of Thought** - Show every ancestor from the current note to its root in a dedicated buffer, and optionally insert that chain into the current note
-- **Cross-linked Chains of Thought** - For every note linked under Cross References, show its own ancestor chain so the cross-link is understood in context rather than by name alone
-- **Reparenting** - Move a note (or a whole subtree) to a new folgezettel address, with links and file names kept in sync
-- **Quiet Link Storage** - Optional property-drawer mode that keeps parent and child references out of the visible body of the note, reducing merge-conflict surface
+- **Automatic Bidirectional Linking** - Parent and child notes are linked automatically.
+- **Address Validation** - Prevents invalid folgezettel addresses.
+- **Duplicate Detection** - Warns if an address is already in use.
+- **Smart Suggestions** - Suggests the next available child address.
+- **Cross-Reference Links** - Automatic reciprocal links when inserting manual links.
+- **Database Sync** - Immediate visibility in org-roam graph and queries.
+- **Extended Alphabet** - Supports aa, ab, ..., zz, aaa, ... after z.
+- **Navigation Commands** - Jump to parent, list children, or show a tree view of the vault.
+- **Chain of Thought** - Show every ancestor from the current note to its root in a dedicated buffer, and optionally insert that chain into the current note.
+- **Cross-linked Chains of Thought** - For every note linked under Cross References, show its own ancestor chain so the cross-link is understood in context rather than by name alone.
+- **Reparenting** - Move a note (or a whole subtree) to a new folgezettel address, with links and file names kept in sync.
+- **Quiet Link Storage** - Optional property-drawer mode that keeps parent and child references out of the visible body of the note, reducing merge-conflict surface.
 
 ## Installation
 
