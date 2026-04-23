@@ -31,7 +31,7 @@ Fans of the paper-based approach may object that you should write these notes by
 This may be true, but more frequent perusal of the paper zettelkasten may be compensatory and possibly more effective in the long term. 
 Often, there is just not enough time available to rewrite the notes by hand.
 
-There is no rule against mixing handwritten and printed notes together. The inclusion of the folgezettel index in the title indicates where to store the note. Paper-based zettelkastens rely on the folgezettel index (or alternatively the Luhmann-style index or the Scott Scheper index, both of which are not computer-compatible) to specify the linear order of note storage. There is a one-to-one mapping between the zettelkasten graph and the order in which the notes are stored.
+There is no rule against mixing handwritten and printed notes together. The inclusion of the folgezettel index in the title indicates where to store the note. Paper-based zettelkastens rely on the folgezettel index (or alternatively the Luhmann-style index or the Scott Scheper index, which are not computer-compatible) to specify the linear order of note storage. There is a one-to-one mapping between the zettelkasten graph and the order in which the notes are stored.
 
 This approach supports a hybrid zettelkasten, with part electronic and part paper-based. Of course, it also supports a mirrored zettelkasten in both paper and electronic form.
 
@@ -44,7 +44,6 @@ Obsidian offers a fantastic, infinite canvas for displaying and organizing notes
 ### Adding some order to the zettelkasten
 
 Some hierarchical order is necessary to ease navigation of the zettelkasten because keyword searching does not guarantee that you will retrieve all relevant notes. Luhmann's paper version had order provided by his indexing system. Disorder was provided by cross-links between notes. According to Luhmann, you need both order and disorder. The optimal mix of order and disorder will probably vary with project and user. Luhmann's indexing system started with root nodes numbered with integers, separated by backslashes from the indices of the descendant nodes. I recommend spending an hour early on identifying a list of areas of knowledge you want to store notes on in the zettelkasten. These areas can serve as your root nodes. You can expand this list as your interests evolve.
-
 
 ## Table of Contents
 
@@ -73,9 +72,11 @@ When you create a note with a folgezettel address in its title (e.g., "1.2a My T
 
 This creates a navigable hierarchy of interconnected notes.
 
+
 ## Features
 
 - **Automatic Bidirectional Linking** - Parent and child notes are linked automatically.
+- **Narrowing of Search Results in Minibuffer** - The index narrows the search results in the minibuffer as it is extended, thereby facilitating movement down the chain of thought.
 - **Address Validation** - Prevents invalid folgezettel addresses.
 - **Duplicate Detection** - Warns if an address is already in use.
 - **Smart Suggestions** - Suggests the next available child address.
@@ -589,10 +590,11 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 
 ## Acknowledgments
 
-- Niklas Luhmann for the Zettelkasten method.
-- The [org-roam](https://www.orgroam.com/) team for their excellent package.
-- The Emacs community for continuous inspiration.
+- Inspiration from the annual Emacsconf and various Emacs Meetup groups, especially the Austin Emacs Meetup and the Berlin Emacs Meetup.
 
+## Related projects
+
+- [bidirectional-folgezettel for Obsidian](https://github.com/MooersLab/bidirectional-folgezettel)
 
 ## Status
 
