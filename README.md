@@ -1,5 +1,4 @@
 # Autoslip-Roam
-
 ![Version](https://img.shields.io/static/v1?label=autoslip-roam&message=3.0.0&color=brightcolor)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Emacs](https://img.shields.io/badge/Emacs-27.1+-blueviolet.svg)](https://www.gnu.org/software/emacs/)
@@ -42,7 +41,6 @@ If the note spans multiple pages, as may be the case with a structure, keyword, 
 Obsidian offers a fantastic, infinite canvas for displaying and organizing notes in all kinds of configurations. The ability to print out the notes opens up the opportunity to work with paper versions on a large tabletop or a corkboard. Sometimes, changing the context from electronic to physical can stimulate the mind. This alternative physical approach to arranging notes is useful when assembling a manuscript. You can use the canvas to combine all the notes you want to print. This could be useful for one-off tasks, such as assembling a manuscript, where you may discard the paper notes when you are done.
 
 ### Adding some order to the zettelkasten
-
 Some hierarchical order is necessary to ease navigation of the zettelkasten because keyword searching does not guarantee that you will retrieve all relevant notes. Luhmann's paper version had order provided by his indexing system. Disorder was provided by cross-links between notes. According to Luhmann, you need both order and disorder. The optimal mix of order and disorder will probably vary with project and user. Luhmann's indexing system started with root nodes numbered with integers, separated by backslashes from the indices of the descendant nodes. I recommend spending an hour early on identifying a list of areas of knowledge you want to store notes on in the zettelkasten. These areas can serve as your root nodes. You can expand this list as your interests evolve.
 
 ## Table of Contents
@@ -71,7 +69,6 @@ When you create a note with a folgezettel address in its title (e.g., "1.2a My T
 3. Inserts a forward link to the child in the parent note.
 
 This creates a navigable hierarchy of interconnected notes.
-
 
 ## Features
 
@@ -148,8 +145,10 @@ cd autoslip-roam
 
 ```
 M-x org-roam-node-find RET
-Title: 1 Introduction to My Topic
+Title: 1. Introduction to My Topic
 ```
+
+Root note titles carry a trailing period after the integer (e.g., `1.`), matching the style used in numbered outlines like `1. Crystallography`. Legacy titles without the trailing period (e.g., `1 Introduction`) are still recognized and are treated as equivalent to the canonical form.
 
 ### 3. Create a Child Note
 
@@ -173,9 +172,9 @@ The package suggests `1.1` as the first child. Enter a title when prompted.
 Your content here...
 ```
 
-**Parent note (1 Introduction to My Topic):**
+**Parent note (1. Introduction to My Topic):**
 ```org
-#+title: 1 Introduction to My Topic
+#+title: 1. Introduction to My Topic
 
 Your content here...
 
@@ -189,7 +188,7 @@ Your content here...
 
 | Address | Description |
 |---------|-------------|
-| `1` | Root note |
+| `1.` | Root note |
 | `1.2` | Second subtopic of note 1 |
 | `1.2a` | First letter branch of 1.2 |
 | `1.2aa` | 27th child of 1.2 (after z) |
@@ -199,16 +198,17 @@ Your content here...
 ### Rules
 
 1. **Start with a number** - All addresses begin with a root number
-2. **Single period only** - Only one `.` allowed (after the root)
-3. **Alternation** - Numbers and letters must alternate after the period
-4. **Lowercase only** - Use lowercase letters (a-z)
-5. **Extended alphabet** - After z comes aa, ab, ..., zz, aaa, ...
+2. **Root notes carry a trailing period** - Canonical root form is `N.` (e.g., `1.`). Legacy bare-integer titles (`1 Crystallography`) are still accepted and treated as equivalent.
+3. **Single period only** - Only one `.` allowed (the one separating the root from the first subtopic, or the one marking a root note itself)
+4. **Alternation** - Numbers and letters must alternate after the period
+5. **Lowercase only** - Use lowercase letters (a-z)
+6. **Extended alphabet** - After z comes aa, ab, ..., zz, aaa, ...
 
 ### Parent-Child Relationships
 
 | Child | Parent | Rule |
 |-------|--------|------|
-| `1.2` | `1` | Remove `.number` |
+| `1.2` | `1.` | Remove `.number`, leave the root period |
 | `1.2a` | `1.2` | Remove letters |
 | `1.2aa` | `1.2` | Remove ALL trailing letters |
 | `1.2a3` | `1.2a` | Remove trailing numbers |
@@ -608,13 +608,11 @@ Feedback and patches are welcome via the issue tracker.
 ## Additional considerations for existing org-roam users
 
 ## What if you have an existing zettelkasten in org-roam without folgezettel indices?
-
 If you already have a set of topic nodes, perhaps at one level below a master node, you can use them as the root nodes. You will need to number these. I maintain a file called 00. Index of Indices that contains the list of numbered root nodes.
 
 If you have a large graph that was developed from the bottom up, you could ask AI agents to identify candidate root nodes. You could then edit and number these and then ask the agents to apply the numbering scheme described above while honoring the existing links.
 
 ## How to export to paper?
-
 My approach is to export the note to PDF, then print it. 
 I added a LaTeX preamble drawer to my template for notes to provide a compact format to save paper.
 
@@ -630,21 +628,17 @@ I added a LaTeX preamble drawer to my template for notes to provide a compact fo
 :END:
 ```
 
-
-
 ## Update history
 
 | Version | Changes | Date |
 |:--------|:--------|:-----|
-| 3.0.0 | Renamed the package from `folgezettel-org-roam` to `autoslip-roam`. Every public symbol, file, buffer name, mode name, and customization group was renamed in step. Users upgrading from 2.x will need to update their `require` form, their customizations, and any key bindings to the new prefix. | 2026-04-23 |
+| 3.0.0 | Renamed the package from `folgezettel-org-roam` to `autoslip-roam`. Every public symbol, file, buffer name, mode name, and customization group was renamed in step. Users upgrading from 2.x will need to update their `require` form, their customizations, and any key bindings to the new prefix. Root addresses now canonicalize to `N.` with a trailing period (e.g., `1.`) to match numbered-outline conventions like `1. Crystallography`. Legacy bare-integer titles (`1 Crystallography`) are still recognized and treated as equivalent. | 2026-04-23 |
 | 2.5.0 | Added `show-chain-of-thought`, `insert-chain-of-thought`, and `show-crosslinked-chains` commands. Expanded the test suite to 100 tests. | 2026-04-23 |
 | 2.4.0 | Added `goto-parent`, `list-children`, `show-tree`, `reparent`, and `reparent-subtree` commands. Added a quiet property-drawer link-storage mode. Expanded the test suite to 86 tests. | 2026-04-22 |
 | 0.1 | Initial commit. Extensive edits of the README.md. | 2026-01-31 |
 
-
 ## Funding
 - NIH: R01 CA242845, R01 AI088011
 - NIH: P30 CA225520 (PI: R. Mannel); P30GM145423 (PI: A. West)
-
 
 **Questions?** Open an issue on [GitHub](https://github.com/MooersLab/autoslip-roam/issues).

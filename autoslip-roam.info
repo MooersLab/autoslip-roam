@@ -66,10 +66,15 @@ A folgezettel is a sequential numbering system used in the Zettelkasten
 (slip-box) method.  Each note has an address that encodes its position
 in a hierarchy of ideas.  For example:
 
-   • ‘1’ - A root note (first topic)
+   • ‘1.’ - A root note (first topic); the trailing period is the
+     canonical marker for a root
    • ‘1.2’ - Second subtopic of note 1
    • ‘1.2a’ - First branch from 1.2
    • ‘1.2a3’ - Third continuation of 1.2a
+
+   Legacy titles without the trailing period on the root (e.g., ‘1
+Crystallography’) are still recognized and treated as equivalent to the
+canonical ‘1.’ form.
 
 1.2 Features
 ============
@@ -160,7 +165,7 @@ Add to your ‘init.el’:
 
   1. Create a root note with a folgezettel title:
           M-x org-roam-node-find RET
-          Title: 1 My First Topic
+          Title: 1. My First Topic
 
   2. Open the root note and create a child:
           M-x autoslip-roam-insert-next-child RET
@@ -169,7 +174,7 @@ Add to your ‘init.el’:
      prompted.
 
   4. Both notes now have bidirectional links:
-        − Child note has "Parent Note" section with link to ‘1’
+        − Child note has "Parent Note" section with link to ‘1.’
         − Parent note has "Child Notes" section with link to child
 
 
@@ -183,8 +188,9 @@ File: autoslip-roam.info,  Node: Folgezettel Addresses,  Next: Usage,  Prev: Qui
 
 Folgezettel addresses follow a strict hierarchical pattern:
 
-‘1, 2, 3, ...’
-     Root notes (single numbers)
+‘1., 2., 3., ...’
+     Root notes (a number followed by a trailing period); bare-integer
+     legacy forms are accepted
 ‘1.1, 1.2, 1.13, ...’
      First-level subtopics (number DOT number)
 ‘1.2a, 1.2b, ..., 1.2z’
@@ -199,7 +205,7 @@ Folgezettel addresses follow a strict hierarchical pattern:
 
 The address system follows strict alternation:
 
-  1. Root numbers can only have DOT-number children (‘1’ ⇒ ‘1.1’)
+  1. Root numbers can only have DOT-number children (‘1.’ ⇒ ‘1.1’)
   2. DOT-number nodes can only have letter children (‘1.1’ ⇒ ‘1.1a’)
   3. Letter-ending nodes can only have number children (‘1.1a’ ⇒
      ‘1.1a1’)
@@ -210,7 +216,8 @@ The address system follows strict alternation:
 
 Child                  Parent                 Relationship
 ----------------------------------------------------------------------------
-‘1.2’                  ‘1’                    Remove .number
+‘1.2’                  ‘1.’                   Remove .number, leave root
+                                              period
 ‘1.2a’                 ‘1.2’                  Remove letters
 ‘1.2aa’                ‘1.2’                  Remove ALL letters
 ‘1.2a3’                ‘1.2a’                 Remove trailing number
@@ -222,7 +229,8 @@ Child                  Parent                 Relationship
 4.4.1 Valid Examples
 --------------------
 
-   • ‘1’ - Root note
+   • ‘1.’ - Root note (canonical); ‘1’ is also accepted as a legacy bare
+     form
    • ‘1.13’ - Multi-digit subtopic
    • ‘1.2a’ - Single letter branch
    • ‘1.2aa’ - Extended letter (27th child)
@@ -664,15 +672,15 @@ A.2 Function Index
 Tag Table:
 Node: Top618
 Node: Introduction1886
-Node: Installation3702
-Node: Quick Start4808
-Node: Folgezettel Addresses5622
-Node: Usage7706
-Node: Customization8962
-Node: Commands12329
-Node: Testing17452
-Node: Troubleshooting19887
-Node: Index21089
+Node: Installation3933
+Node: Quick Start5039
+Node: Folgezettel Addresses5855
+Node: Usage8143
+Node: Customization9399
+Node: Commands12766
+Node: Testing17889
+Node: Troubleshooting20324
+Node: Index21526
 
 End Tag Table
 

@@ -32,9 +32,9 @@
 ;; the `autoslip-roam-auto-crosslink' customization variable.
 ;;
 ;; Example folgezettel hierarchy:
-;;   1           - First note in chain
-;;   1.2         - Second subtopic of note 1
-;;   1.13        - Thirteenth subtopic of note 1
+;;   1.          - First note in chain (root; trailing period is canonical)
+;;   1.2         - Second subtopic of note 1.
+;;   1.13        - Thirteenth subtopic of note 1.
 ;;   1.13a       - First letter-indexed child of 1.13
 ;;   1.13b       - Second letter-indexed child of 1.13
 ;;   1.13aa      - 27th letter-indexed child of 1.13 (after z comes aa)
@@ -42,9 +42,14 @@
 ;;   1.13a2b     - Second letter-indexed child of 1.13a2
 ;;
 ;; Parent-child relationships:
+;;   1.   is parent of: 1.1, 1.2, 1.13, ...
 ;;   1.13 is parent of: 1.13a, 1.13b, ..., 1.13z, 1.13aa, 1.13ab, ...
 ;;   1.13a is parent of: 1.13a1, 1.13a2, 1.13a3, ..., 1.13a99, ..., 1.13a201, ...
 ;;   1.13a2 is parent of: 1.13a2a, 1.13a2b, ..., 1.13a2z, 1.13a2aa, ...
+;;
+;; Titles written in the legacy form "1 Crystallography" (no trailing period)
+;; are still accepted; they are canonicalized to "1." on extraction so that
+;; every internally produced address carries the expected period.
 ;;
 ;; Installation:
 ;; 1. Place this file in your load-path
@@ -196,6 +201,22 @@ Used to verify the correct note is being processed in the capture hook.")
 
 
 
+(defun autoslip-roam--root-address-p (address)
+  "Return non-nil if ADDRESS is a root, i.e. digits with an optional trailing period.
+Both the canonical form \"1.\" and the legacy bare form \"1\" are accepted."
+  (and (stringp address)
+       (string-match-p "\\`[0-9]+\\.?\\'" address)))
+
+(defun autoslip-roam--canonicalize-root (address)
+  "Return ADDRESS with a trailing period if it is a bare-integer root.
+Non-root addresses are returned unchanged.  The trailing period is the
+canonical marker for a root note, matching the style used in numbered
+outlines like \"1. Crystallography\"."
+  (cond
+   ((not (stringp address)) address)
+   ((string-match-p "\\`[0-9]+\\'" address) (concat address "."))
+   (t address)))
+
 (defun autoslip-roam--parse-address (folgezettel)
   "Parse FOLGEZETTEL string and return the parent's address.
 
@@ -204,16 +225,19 @@ The pattern alternates between numbers and letters:
 - Letters indicate alphabetic children
 - Numbers after letters indicate numeric children
 
+Root notes carry a trailing period (for example \"1.\").  The bare form
+\"1\" is accepted for backward compatibility and treated as the same root.
+
 Examples:
   1.2a3c5   -> 1.2a3c   (remove last number)
   1.13aa    -> 1.13     (remove all trailing letters)
   1.13a     -> 1.13     (remove all trailing letters)
   1.2a      -> 1.2      (remove all trailing letters)
-  1.13      -> 1        (remove dot and number)
-  1         -> nil      (no parent)"
+  1.13      -> 1.       (remove the trailing dot-number, leaving canonical root)
+  1.        -> nil      (no parent)
+  1         -> nil      (no parent, legacy bare root)"
   (when (and folgezettel (string-match autoslip-roam-regex folgezettel))
     (let ((addr folgezettel))
-      ;; Remove the last component (number or letter sequence)
       (cond
        ;; Ends with numbers after letters (e.g., "1.2a15" -> "1.2a")
        ((string-match "\\(.*[a-z]+\\)[0-9]+$" addr)
@@ -222,19 +246,22 @@ Examples:
        ;; Remove ALL trailing letters to get parent
        ((string-match "\\(.*?\\)[a-z]+$" addr)
         (match-string 1 addr))
-       ;; Ends with numbers after a dot (e.g., "1.13" -> "1")
+       ;; Ends with numbers after a dot (e.g., "1.13" -> "1.")
+       ;; Append the canonical trailing period to the captured root.
        ((string-match "\\(.*\\)[.][0-9]+$" addr)
-        (match-string 1 addr))
-       ;; Single number or number sequence (e.g., "1" -> nil, no parent)
-       ((string-match "^[0-9]+$" addr)
+        (concat (match-string 1 addr) "."))
+       ;; Bare or canonical root (e.g., "1", "1.") -> no parent
+       ((autoslip-roam--root-address-p addr)
         nil)
        (t nil)))))
 
 (defun autoslip-roam--extract-from-title (title)
   "Extract folgezettel pattern from TITLE string.
-Returns the folgezettel if found, nil otherwise."
+Returns the folgezettel if found, nil otherwise.
+Bare-integer roots (\"1\") are canonicalized to \"1.\" so that every
+address returned carries the expected trailing period at root."
   (when (and title (string-match autoslip-roam-regex title))
-    (match-string 1 title)))
+    (autoslip-roam--canonicalize-root (match-string 1 title))))
 
 (defun autoslip-roam--find-parent-node (parent-address)
   "Find org-roam node with PARENT-ADDRESS in its title.
@@ -840,9 +867,12 @@ Examples: a -> b, z -> aa, az -> ba, zz -> aaa"
 Returns a list of valid suggestions based on the parent's type.
 
 Addressing rules:
-- If parent is a root number (e.g., '7'): can ONLY add dot-number child (7.1)
-- If parent has a dot already (e.g., '7.1'): can ONLY add letter child (7.1a)
-- If parent ends with a letter (e.g., '7.1a'): can ONLY add number child (7.1a1)
+- If parent is a root (e.g., '7.' or the legacy bare '7'):
+  can ONLY add dot-number child (7.1)
+- If parent has a dot with a subtopic (e.g., '7.1'):
+  can ONLY add letter child (7.1a)
+- If parent ends with a letter (e.g., '7.1a'):
+  can ONLY add number child (7.1a1)
 
 Returns nil with an error message if parent-address is invalid."
   (let ((errors (autoslip-roam-validate-address-full parent-address)))
@@ -851,21 +881,24 @@ Returns nil with an error message if parent-address is invalid."
           (message "Cannot suggest children: %s" (string-join errors "; "))
           nil)
       (let* ((nodes (org-roam-node-list))
+             (canonical-parent
+              (autoslip-roam--canonicalize-root parent-address))
              (children (seq-filter
                         (lambda (node)
                           (when-let ((title (org-roam-node-title node))
                                      (fz (autoslip-roam--extract-from-title title)))
-                            (and (string-prefix-p parent-address fz)
-                                 (not (string= parent-address fz))
-                                 (string= parent-address
+                            (and (string-prefix-p canonical-parent fz)
+                                 (not (string= canonical-parent fz))
+                                 (string= canonical-parent
                                          (autoslip-roam--parse-address fz)))))
                         nodes))
              (parent-ends-with-letter
-              (and (> (length parent-address) 0)
-                   (let ((last-char (aref parent-address (1- (length parent-address)))))
+              (and (> (length canonical-parent) 0)
+                   (let ((last-char (aref canonical-parent (1- (length canonical-parent)))))
                      (and (>= last-char ?a) (<= last-char ?z)))))
-             (parent-is-root (string-match-p "^[0-9]+$" parent-address))
-             (parent-has-dot (string-match-p "\\." parent-address))
+             (parent-is-root (autoslip-roam--root-address-p canonical-parent))
+             (parent-has-dot (and (not parent-is-root)
+                                  (string-match-p "\\." canonical-parent)))
              (max-num-with-dot 0)
              (max-num-after-letter 0)
              (max-letter nil))
@@ -875,16 +908,22 @@ Returns nil with an error message if parent-address is invalid."
           (when-let* ((title (org-roam-node-title child))
                       (fz (autoslip-roam--extract-from-title title)))
             (cond
-             ;; Numeric child with dot (e.g., "1.2" from parent "1")
-             ((string-match (concat "^" (regexp-quote parent-address)
-                                    "[.]\\([0-9]+\\)")
-                            fz)
+             ;; Numeric child under a canonical or bare root (e.g., "1.2" from "1." or "1")
+             ((and parent-is-root
+                   (string-match
+                    (concat "^"
+                            (regexp-quote
+                             (if (string-suffix-p "." canonical-parent)
+                                 (substring canonical-parent 0 -1)
+                               canonical-parent))
+                            "[.]\\([0-9]+\\)")
+                    fz))
               (let ((num (string-to-number (match-string 1 fz))))
                 (setq max-num-with-dot (max max-num-with-dot num))))
 
              ;; Numeric child after letter parent (e.g., "1a2" from parent "1a")
              ((and parent-ends-with-letter
-                   (string-match (concat "^" (regexp-quote parent-address)
+                   (string-match (concat "^" (regexp-quote canonical-parent)
                                         "\\([0-9]+\\)")
                                 fz))
               (let ((num (string-to-number (match-string 1 fz))))
@@ -893,7 +932,7 @@ Returns nil with an error message if parent-address is invalid."
              ;; Letter child (e.g., "1.2a" from "1.2")
              ((and (not parent-ends-with-letter)
                    parent-has-dot
-                   (string-match (concat "^" (regexp-quote parent-address)
+                   (string-match (concat "^" (regexp-quote canonical-parent)
                                         "\\([a-z]+\\)")
                                 fz))
               (let ((letters (match-string 1 fz)))
@@ -908,21 +947,23 @@ Returns nil with an error message if parent-address is invalid."
          ;; Parent ends with letter: can ONLY add number child (e.g., 1.2a -> 1.2a1)
          (parent-ends-with-letter
           (let ((numeric-suggestion
-                 (concat parent-address (number-to-string (1+ max-num-after-letter)))))
+                 (concat canonical-parent (number-to-string (1+ max-num-after-letter)))))
             (list numeric-suggestion)))
 
-         ;; Parent is root number (no dot): can ONLY add dot-number child
-         ;; e.g., 7 -> 7.1 (NOT 7a)
+         ;; Parent is a root: can ONLY add dot-number child
+         ;; Canonical form already ends with ".", so just append the number.
          (parent-is-root
           (let ((numeric-suggestion
-                 (concat parent-address "." (number-to-string (1+ max-num-with-dot)))))
+                 (concat canonical-parent
+                         (unless (string-suffix-p "." canonical-parent) ".")
+                         (number-to-string (1+ max-num-with-dot)))))
             (list numeric-suggestion)))
 
          ;; Parent already has a dot (e.g., 7.1): can ONLY add letter child
          ;; e.g., 7.1 -> 7.1a (NOT 7.1.1 which would have two dots)
          (parent-has-dot
           (let ((alphabetic-suggestion
-                 (concat parent-address
+                 (concat canonical-parent
                          (if max-letter
                              (autoslip-roam--next-letter-sequence max-letter)
                            "a"))))
@@ -1020,20 +1061,23 @@ ARGS are the arguments passed to `org-insert-link'."
 ;;; ============================================================================
 
 (defun autoslip-roam--children-nodes-of (parent-address)
-  "Return the list of org-roam nodes whose direct parent is PARENT-ADDRESS."
+  "Return the list of org-roam nodes whose direct parent is PARENT-ADDRESS.
+PARENT-ADDRESS may be in canonical form (\"1.\") or in the legacy bare
+form (\"1\"); both resolve to the same set of children."
   (when parent-address
-    (let ((nodes (org-roam-node-list)))
+    (let* ((canonical (autoslip-roam--canonicalize-root parent-address))
+           (nodes (org-roam-node-list)))
       (seq-filter
        (lambda (node)
          (when-let* ((title (org-roam-node-title node))
                      (fz (autoslip-roam--extract-from-title title))
                      (p  (autoslip-roam--parse-address fz)))
-           (string= p parent-address)))
+           (string= p canonical)))
        nodes))))
 
 (defun autoslip-roam--address-depth (address)
   "Return the hierarchical depth of ADDRESS.
-A root number (\"1\") has depth 0; every extra segment adds one."
+A root (\"1.\" or the legacy bare \"1\") has depth 0; every extra segment adds one."
   (let ((depth 0)
         (cur address))
     (while (setq cur (autoslip-roam--parse-address cur))
@@ -1045,8 +1089,10 @@ A root number (\"1\") has depth 0; every extra segment adds one."
 Each token is either a number (an integer) or a letter sequence (a string).
 A dot-number segment is represented as the same integer token as a bare
 number; the shape of the address is already known from context.
+Trailing periods on roots are absorbed because dots never appear in tokens.
 
 Examples:
+  \"1.\"        -> (1)
   \"1\"         -> (1)
   \"1.13\"      -> (1 13)
   \"1.13a\"     -> (1 13 \"a\")
@@ -1267,7 +1313,8 @@ in root-to-leaf order.  Used by the cross-linked chains buffer.")
 
 (defun autoslip-roam--ancestor-addresses (address)
   "Return the chain of folgezettel addresses from root to ADDRESS (inclusive).
-For example, (\"1.2a3\") expands to (\"1\" \"1.2\" \"1.2a\" \"1.2a3\").
+For example, (\"1.2a3\") expands to (\"1.\" \"1.2\" \"1.2a\" \"1.2a3\").
+The root is reported in canonical form with a trailing period.
 Returns nil when ADDRESS itself is nil or empty."
   (when (and address (stringp address) (not (string-empty-p address)))
     (let ((chain (list address))

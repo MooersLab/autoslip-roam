@@ -81,7 +81,7 @@ a hierarchy of ideas.  For example:
 
 @itemize @bullet
 @item
-@code{1} - A root note (first topic)
+@code{1.} - A root note (first topic); the trailing period is the canonical marker for a root
 @item
 @code{1.2} - Second subtopic of note 1
 @item
@@ -89,6 +89,8 @@ a hierarchy of ideas.  For example:
 @item
 @code{1.2a3} - Third continuation of 1.2a
 @end itemize
+
+Legacy titles without the trailing period on the root (e.g., @code{1 Crystallography}) are still recognized and treated as equivalent to the canonical @code{1.} form.
 
 @section Features
 
@@ -208,7 +210,7 @@ Add to your @file{init.el}:
 Create a root note with a folgezettel title:
 @example
 M-x org-roam-node-find RET
-Title: 1 My First Topic
+Title: 1. My First Topic
 @end example
 
 @item
@@ -224,7 +226,7 @@ The package suggests @code{1.1} as the first child.  Enter a title when prompted
 Both notes now have bidirectional links:
 @itemize @minus
 @item
-Child note has ``Parent Note'' section with link to @code{1}
+Child note has ``Parent Note'' section with link to @code{1.}
 @item
 Parent note has ``Child Notes'' section with link to child
 @end itemize
@@ -242,8 +244,8 @@ Parent note has ``Child Notes'' section with link to child
 Folgezettel addresses follow a strict hierarchical pattern:
 
 @table @code
-@item 1, 2, 3, ...
-Root notes (single numbers)
+@item 1., 2., 3., ...
+Root notes (a number followed by a trailing period); bare-integer legacy forms are accepted
 @item 1.1, 1.2, 1.13, ...
 First-level subtopics (number DOT number)
 @item 1.2a, 1.2b, ..., 1.2z
@@ -260,7 +262,7 @@ The address system follows strict alternation:
 
 @enumerate
 @item
-Root numbers can only have DOT-number children (@code{1} @result{} @code{1.1})
+Root numbers can only have DOT-number children (@code{1.} @result{} @code{1.1})
 @item
 DOT-number nodes can only have letter children (@code{1.1} @result{} @code{1.1a})
 @item
@@ -273,7 +275,7 @@ The pattern continues alternating
 
 @multitable @columnfractions .3 .3 .4
 @headitem Child @tab Parent @tab Relationship
-@item @code{1.2} @tab @code{1} @tab Remove .number
+@item @code{1.2} @tab @code{1.} @tab Remove .number, leave root period
 @item @code{1.2a} @tab @code{1.2} @tab Remove letters
 @item @code{1.2aa} @tab @code{1.2} @tab Remove ALL letters
 @item @code{1.2a3} @tab @code{1.2a} @tab Remove trailing number
@@ -284,7 +286,7 @@ The pattern continues alternating
 
 @subsection Valid Examples
 @itemize @bullet
-@item @code{1} - Root note
+@item @code{1.} - Root note (canonical); @code{1} is also accepted as a legacy bare form
 @item @code{1.13} - Multi-digit subtopic
 @item @code{1.2a} - Single letter branch
 @item @code{1.2aa} - Extended letter (27th child)

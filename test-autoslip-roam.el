@@ -58,18 +58,23 @@
 ;;; ============================================================================
 
 (ert-deftest test-parse-address-single-number ()
-  "Test parsing root addresses (single numbers have no parent)."
+  "Test parsing root addresses (canonical \"1.\" and legacy bare \"1\" have no parent)."
+  (should (equal nil (autoslip-roam--parse-address "1.")))
+  (should (equal nil (autoslip-roam--parse-address "7.")))
+  (should (equal nil (autoslip-roam--parse-address "42.")))
+  (should (equal nil (autoslip-roam--parse-address "123.")))
+  ;; Legacy bare roots still resolve to no parent.
   (should (equal nil (autoslip-roam--parse-address "1")))
   (should (equal nil (autoslip-roam--parse-address "7")))
   (should (equal nil (autoslip-roam--parse-address "42")))
   (should (equal nil (autoslip-roam--parse-address "123"))))
 
 (ert-deftest test-parse-address-dot-number ()
-  "Test parsing dot-number addresses."
-  (should (equal "1" (autoslip-roam--parse-address "1.2")))
-  (should (equal "1" (autoslip-roam--parse-address "1.13")))
-  (should (equal "7" (autoslip-roam--parse-address "7.1")))
-  (should (equal "42" (autoslip-roam--parse-address "42.99"))))
+  "Test parsing dot-number addresses.  Parent of a subtopic is the canonical root \"N.\"."
+  (should (equal "1." (autoslip-roam--parse-address "1.2")))
+  (should (equal "1." (autoslip-roam--parse-address "1.13")))
+  (should (equal "7." (autoslip-roam--parse-address "7.1")))
+  (should (equal "42." (autoslip-roam--parse-address "42.99"))))
 
 (ert-deftest test-parse-address-single-letter ()
   "Test parsing addresses ending with single letter."
@@ -109,8 +114,10 @@
 ;;; ============================================================================
 
 (ert-deftest test-extract-from-title-basic ()
-  "Test extracting folgezettel from basic titles."
-  (should (equal "1" (autoslip-roam--extract-from-title "1 Introduction")))
+  "Test extracting folgezettel from basic titles.
+Bare-integer roots are canonicalized to the trailing-period form."
+  (should (equal "1." (autoslip-roam--extract-from-title "1 Introduction")))
+  (should (equal "1." (autoslip-roam--extract-from-title "1. Introduction")))
   (should (equal "1.2" (autoslip-roam--extract-from-title "1.2 Methods")))
   (should (equal "1.2a" (autoslip-roam--extract-from-title "1.2a Details"))))
 
@@ -121,8 +128,9 @@
   (should (equal "1.2a3c5d7a" (autoslip-roam--extract-from-title "1.2a3c5d7a Deep Chain"))))
 
 (ert-deftest test-extract-from-title-address-only ()
-  "Test extracting when title is just the address."
-  (should (equal "7" (autoslip-roam--extract-from-title "7")))
+  "Test extracting when title is just the address.  Roots are canonicalized."
+  (should (equal "7." (autoslip-roam--extract-from-title "7")))
+  (should (equal "7." (autoslip-roam--extract-from-title "7.")))
   (should (equal "7.1" (autoslip-roam--extract-from-title "7.1")))
   (should (equal "7.1a" (autoslip-roam--extract-from-title "7.1a"))))
 
@@ -135,8 +143,8 @@
 
 (ert-deftest test-extract-from-title-embedded-numbers ()
   "Test extraction does not match embedded numbers incorrectly."
-  ;; Should match the leading folgezettel only
-  (should (equal "1" (autoslip-roam--extract-from-title "1 Chapter with 42 pages")))
+  ;; Should match the leading folgezettel only (root is canonicalized to \"1.\")
+  (should (equal "1." (autoslip-roam--extract-from-title "1 Chapter with 42 pages")))
   (should (equal "2.3" (autoslip-roam--extract-from-title "2.3 Analysis of Year 2024"))))
 
 ;;; ============================================================================
@@ -279,19 +287,21 @@
 ;;; ============================================================================
 
 (ert-deftest test-suggest-next-child-root-number ()
-  "Test suggestions for root number parents."
+  "Test suggestions for root parents (canonical \"7.\" and legacy bare \"7\")."
   (test-autoslip-roam--with-mock-nodes '()
-    (let ((suggestions (autoslip-roam-suggest-next-child "7")))
-      (should (equal '("7.1") suggestions)))))
+    (should (equal '("7.1") (autoslip-roam-suggest-next-child "7.")))
+    (should (equal '("7.1") (autoslip-roam-suggest-next-child "7")))))
 
 (ert-deftest test-suggest-next-child-root-with-existing ()
-  "Test suggestions for root number with existing children."
+  "Test suggestions for root with existing children.
+Both the canonical \"7.\" and legacy bare \"7\" should resolve to the same
+first available child because `extract-from-title' canonicalizes."
   (let* ((child1 (test-autoslip-roam--create-mock-node "id1" "7.1 First" "/tmp/7-1.org"))
          (child2 (test-autoslip-roam--create-mock-node "id2" "7.2 Second" "/tmp/7-2.org"))
          (nodes (list child1 child2)))
     (test-autoslip-roam--with-mock-nodes nodes
-      (let ((suggestions (autoslip-roam-suggest-next-child "7")))
-        (should (equal '("7.3") suggestions))))))
+      (should (equal '("7.3") (autoslip-roam-suggest-next-child "7.")))
+      (should (equal '("7.3") (autoslip-roam-suggest-next-child "7"))))))
 
 (ert-deftest test-suggest-next-child-dot-number ()
   "Test suggestions for dot-number parents."
@@ -347,31 +357,34 @@
 ;;; ============================================================================
 
 (ert-deftest test-find-parent-node-exists ()
-  "Test finding a parent node that exists."
-  (let* ((parent (test-autoslip-roam--create-mock-node "parent-id" "7 Parent Topic" "/tmp/7.org"))
+  "Test finding a parent node that exists.
+Title is stored as \"7. Parent Topic\" in canonical form."
+  (let* ((parent (test-autoslip-roam--create-mock-node "parent-id" "7. Parent Topic" "/tmp/7.org"))
          (nodes (list parent)))
     (test-autoslip-roam--with-mock-nodes nodes
-      (let ((result (autoslip-roam--find-parent-node "7")))
+      (let ((result (autoslip-roam--find-parent-node "7.")))
         (should result)
         (should (equal "parent-id" (org-roam-node-id result)))))))
 
 (ert-deftest test-find-parent-node-not-exists ()
   "Test finding a parent node that does not exist."
-  (let* ((other (test-autoslip-roam--create-mock-node "other-id" "8 Other Topic" "/tmp/8.org"))
+  (let* ((other (test-autoslip-roam--create-mock-node "other-id" "8. Other Topic" "/tmp/8.org"))
          (nodes (list other)))
     (test-autoslip-roam--with-mock-nodes nodes
-      (let ((result (autoslip-roam--find-parent-node "7")))
+      (let ((result (autoslip-roam--find-parent-node "7.")))
         (should (equal nil result))))))
 
 (ert-deftest test-find-parent-node-multiple-nodes ()
-  "Test finding parent among multiple nodes."
-  (let* ((node1 (test-autoslip-roam--create-mock-node "id1" "1 First" "/tmp/1.org"))
+  "Test finding parent among multiple nodes.
+The root note is written in canonical form \"1. First\"; lookup by both
+the canonical \"1.\" and the legacy bare \"1\" succeeds."
+  (let* ((node1 (test-autoslip-roam--create-mock-node "id1" "1. First" "/tmp/1.org"))
          (node2 (test-autoslip-roam--create-mock-node "id2" "1.2 Second" "/tmp/1-2.org"))
          (node3 (test-autoslip-roam--create-mock-node "id3" "1.2a Third" "/tmp/1-2a.org"))
          (nodes (list node1 node2 node3)))
     (test-autoslip-roam--with-mock-nodes nodes
       (should (equal "id2" (org-roam-node-id (autoslip-roam--find-parent-node "1.2"))))
-      (should (equal "id1" (org-roam-node-id (autoslip-roam--find-parent-node "1")))))))
+      (should (equal "id1" (org-roam-node-id (autoslip-roam--find-parent-node "1.")))))))
 
 (ert-deftest test-find-parent-node-nil-address ()
   "Test finding parent with nil address returns nil."
@@ -571,8 +584,9 @@
 ;;; ============================================================================
 
 (ert-deftest test-regression-multidigit-numbers ()
-  "Regression: Multi-digit numbers should be handled correctly."
-  (should (equal "1" (autoslip-roam--parse-address "1.123")))
+  "Regression: Multi-digit numbers should be handled correctly.
+Parent of a dot-number address is the canonical root \"N.\" (trailing period)."
+  (should (equal "1." (autoslip-roam--parse-address "1.123")))
   (should (equal "1.123" (autoslip-roam--parse-address "1.123a")))
   (should (equal "1.123a" (autoslip-roam--parse-address "1.123a456"))))
 
@@ -683,7 +697,9 @@
 ;;; ============================================================================
 
 (ert-deftest test-address-depth-root ()
-  "Root addresses have depth 0."
+  "Root addresses have depth 0, whether canonical or legacy bare."
+  (should (equal 0 (autoslip-roam--address-depth "1.")))
+  (should (equal 0 (autoslip-roam--address-depth "42.")))
   (should (equal 0 (autoslip-roam--address-depth "1")))
   (should (equal 0 (autoslip-roam--address-depth "42"))))
 
@@ -695,7 +711,9 @@
   (should (equal 4 (autoslip-roam--address-depth "1.2a3b"))))
 
 (ert-deftest test-address-tokens-shape ()
-  "Address tokenization separates numbers and letter groups."
+  "Address tokenization separates numbers and letter groups.
+Trailing periods are absorbed because dots never appear in tokens."
+  (should (equal '(1) (autoslip-roam--address-tokens "1.")))
   (should (equal '(1) (autoslip-roam--address-tokens "1")))
   (should (equal '(1 13) (autoslip-roam--address-tokens "1.13")))
   (should (equal '(1 13 "a") (autoslip-roam--address-tokens "1.13a")))
@@ -723,7 +741,8 @@
 ;;; ============================================================================
 
 (ert-deftest test-children-nodes-of-direct ()
-  "`--children-nodes-of' only returns direct children, not grandchildren."
+  "`--children-nodes-of' only returns direct children, not grandchildren.
+The root lookup uses the canonical form \"1.\" with trailing period."
   (let* ((c1 (test-autoslip-roam--create-mock-node
               "id-1-1" "1.1 First" "/tmp/1-1.org"))
          (c2 (test-autoslip-roam--create-mock-node
@@ -731,7 +750,7 @@
          (gc (test-autoslip-roam--create-mock-node
               "id-1-1-a" "1.1a Grandchild" "/tmp/1-1a.org")))
     (test-autoslip-roam--with-mock-nodes (list c1 c2 gc)
-      (let ((children (autoslip-roam--children-nodes-of "1")))
+      (let ((children (autoslip-roam--children-nodes-of "1.")))
         (should (equal 2 (length children)))
         (should (cl-every (lambda (n)
                             (member (org-roam-node-id n) '("id-1-1" "id-1-2")))
@@ -996,9 +1015,10 @@
                  '("1"))))
 
 (ert-deftest test-ancestor-addresses-chain ()
-  "A deep address produces the full chain from root to leaf."
+  "A deep address produces the full chain from root to leaf.
+The root is reported in canonical form with a trailing period."
   (should (equal (autoslip-roam--ancestor-addresses "1.2a3b")
-                 '("1" "1.2" "1.2a" "1.2a3" "1.2a3b"))))
+                 '("1." "1.2" "1.2a" "1.2a3" "1.2a3b"))))
 
 (ert-deftest test-ancestor-addresses-nil ()
   "A nil or empty address returns nil."
@@ -1006,7 +1026,8 @@
   (should (null (autoslip-roam--ancestor-addresses ""))))
 
 (ert-deftest test-chain-triples-resolves-nodes ()
-  "`--chain-triples' walks the chain and resolves each address to a node."
+  "`--chain-triples' walks the chain and resolves each address to a node.
+The legacy bare-integer root title (\"1 Root\") canonicalizes to \"1.\"."
   (let* ((n1   (test-autoslip-roam--create-mock-node
                 "id-1" "1 Root" "/tmp/1.org"))
          (n12  (test-autoslip-roam--create-mock-node
@@ -1016,7 +1037,7 @@
     (test-autoslip-roam--with-mock-nodes (list n1 n12 n12a)
       (let ((chain (autoslip-roam--chain-triples "1.2a")))
         (should (equal 3 (length chain)))
-        (should (equal '("1" "1 Root" "id-1") (nth 0 chain)))
+        (should (equal '("1." "1 Root" "id-1") (nth 0 chain)))
         (should (equal '("1.2" "1.2 Middle" "id-12") (nth 1 chain)))
         (should (equal '("1.2a" "1.2a Leaf" "id-12a") (nth 2 chain)))))))
 
