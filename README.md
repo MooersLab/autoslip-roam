@@ -6,9 +6,10 @@
 [![org-roam](https://img.shields.io/badge/org--roam-2.0+-green.svg)](https://www.orgroam.com/)
 
 Automatic folgezettel (computer-compatible Luhmann-style) bidirectional link generation for [org-roam](https://www.orgroam.com/).
-This package uses the folgezettel index to determine the parent-child relationship and automatically creates directional links based on that relationship.
+This package uses the folgezettel index to determine parent-child relationships and automatically creates directional links based on those relationships.
 The index is placed before the note title and is compatible with the org-roam file-naming system.
 It is also compatible with printing the note for storage in a paper zettelkasten.
+Even though the zettelkasten grows organically as new notes are inserted anywhere in the knowledge graph, the index determines the linear order of the notes for storage in paper form.
 
 ## What problems are addressed by this plugin?
 
