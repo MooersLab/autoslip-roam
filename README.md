@@ -1,5 +1,6 @@
-# Autoslip Roam
+# Autoslip-Roam
 
+![Version](https://img.shields.io/static/v1?label=autoslip-roam&message=3.0.0&color=brightcolor)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Emacs](https://img.shields.io/badge/Emacs-27.1+-blueviolet.svg)](https://www.gnu.org/software/emacs/)
 [![org-roam](https://img.shields.io/badge/org--roam-2.0+-green.svg)](https://www.orgroam.com/)
