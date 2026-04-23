@@ -1,4 +1,4 @@
-# Makefile for folgezettel-org-roam
+# Makefile for autoslip-roam
 # Build, test, and install the package and documentation
 
 # ==============================================================================
@@ -9,22 +9,22 @@
 EMACS ?= emacs
 
 # Package files
-PACKAGE = folgezettel-org-roam.el
-TEST_FILE = test-folgezettel-org-roam.el
+PACKAGE = autoslip-roam.el
+TEST_FILE = test-autoslip-roam.el
 
 # Documentation
-TEXI_FILE = folgezettel-org-roam.texi
-INFO_FILE = folgezettel-org-roam.info
+TEXI_FILE = autoslip-roam.texi
+INFO_FILE = autoslip-roam.info
 
 # Installation directories
 PREFIX ?= /usr/local
 INFODIR ?= $(PREFIX)/share/info
-LISPDIR ?= $(PREFIX)/share/emacs/site-lisp/folgezettel-org-roam
+LISPDIR ?= $(PREFIX)/share/emacs/site-lisp/autoslip-roam
 
 # User-specific installation (no sudo required)
 USER_EMACS_DIR ?= $(HOME)/.emacs.d
 USER_INFODIR ?= $(USER_EMACS_DIR)/info
-USER_LISPDIR ?= $(USER_EMACS_DIR)/site-lisp/folgezettel-org-roam
+USER_LISPDIR ?= $(USER_EMACS_DIR)/site-lisp/autoslip-roam
 
 # Custom package directories for dependencies
 CUSTOM_PACKAGE_DIR = ~/e30fewpackages/elpa
@@ -285,7 +285,7 @@ install-info: info ## Install Info documentation system-wide
 	fi
 	@echo "Installed to $(INFODIR)"
 	@echo ""
-	@echo "Access in Emacs with: C-h i d m Folgezettel Org-Roam RET"
+	@echo "Access in Emacs with: C-h i d m Autoslip Roam RET"
 
 uninstall: ## Uninstall from system directories
 	@echo "Uninstalling from system directories..."
@@ -323,7 +323,7 @@ install-info-user: info ## Install Info documentation to user directory
 	@echo "Add to your init.el:"
 	@echo '  (add-to-list '\''Info-additional-directory-list "$(USER_INFODIR)")'
 	@echo ""
-	@echo "Then access in Emacs with: C-h i d m Folgezettel Org-Roam RET"
+	@echo "Then access in Emacs with: C-h i d m Autoslip Roam RET"
 
 uninstall-user: ## Uninstall from user directories
 	@echo "Uninstalling from user directories..."
@@ -342,6 +342,7 @@ clean: ## Remove compiled files
 	rm -f *.elc
 	rm -f *~
 	rm -f \#*\#
+	rm -rf /tmp/autoslip-test-*
 	rm -rf /tmp/folgezettel-test-*
 
 distclean: clean ## Remove all generated files
@@ -365,7 +366,7 @@ count-tests: ## Count total number of tests
 # ==============================================================================
 
 help: ## Show this help message
-	@echo "Folgezettel Org-Roam Makefile"
+	@echo "Autoslip Roam Makefile"
 	@echo "=============================="
 	@echo ""
 	@echo "Usage: make [target]"
@@ -382,7 +383,7 @@ help: ## Show this help message
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
 	@echo ""
 	@echo "Examples:"
-	@echo "  make test                  # Run all 64 tests"
+	@echo "  make test                  # Run all 100 tests"
 	@echo "  make test-unit             # Run unit tests only"
 	@echo "  make info                  # Build Info documentation"
 	@echo "  make install-user          # Install without sudo"
@@ -391,4 +392,4 @@ help: ## Show this help message
 	@echo ""
 	@echo "Documentation:"
 	@echo "  After installing, access the Info manual in Emacs:"
-	@echo "  C-h i d m Folgezettel Org-Roam RET"
+	@echo "  C-h i d m Autoslip Roam RET"

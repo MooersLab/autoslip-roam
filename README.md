@@ -1,10 +1,10 @@
-# Folgezettel Org-Roam
+# Autoslip Roam
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Emacs](https://img.shields.io/badge/Emacs-27.1+-blueviolet.svg)](https://www.gnu.org/software/emacs/)
 [![org-roam](https://img.shields.io/badge/org--roam-2.0+-green.svg)](https://www.orgroam.com/)
 
-Automatic folgezettel (related to the Luhmann-style but compatible with computer filenames) bidirectional link generation for [org-roam](https://www.orgroam.com/).
+Automatic folgezettel (Luhmann-style) bidirectional link generation for [org-roam](https://www.orgroam.com/).
 This package uses the folgezettel index to determine the parent-child relationship and uses that relationship to create the directional links automatically.
 The index is placed before the title of the note and is compatible with the org-roam file naming system.
 
@@ -58,7 +58,7 @@ Obsidian offers a fantastic, infinite canvas for displaying and organizing notes
 
 ## Overview
 
-Folgezettel Org-Roam brings Niklas Luhmann's folgezettel (follow-up slip) numbering system to org-roam. 
+Autoslip Roam brings Niklas Luhmann's folgezettel (follow-up slip) numbering system to org-roam. 
 When you create a note with a folgezettel address in its title (e.g., "1.2a My Topic"), the package automatically:
 
 1. Identifies the parent note based on the address hierarchy
@@ -76,6 +76,11 @@ This creates a seamlessly navigable hierarchy of interconnected notes.
 - **Cross-Reference Links** - Automatic reciprocal links when inserting manual links
 - **Database Sync** - Immediate visibility in org-roam graph and queries
 - **Extended Alphabet** - Supports aa, ab, ..., zz, aaa, ... after z
+- **Navigation Commands** - Jump to parent, list children, or show a tree view of the vault
+- **Chain of Thought** - Show every ancestor from the current note to its root in a dedicated buffer, and optionally insert that chain into the current note
+- **Cross-linked Chains of Thought** - For every note linked under Cross References, show its own ancestor chain so the cross-link is understood in context rather than by name alone
+- **Reparenting** - Move a note (or a whole subtree) to a new folgezettel address, with links and file names kept in sync
+- **Quiet Link Storage** - Optional property-drawer mode that keeps parent and child references out of the visible body of the note, reducing merge-conflict surface
 
 ## Installation
 
@@ -89,7 +94,7 @@ This creates a seamlessly navigable hierarchy of interconnected notes.
 Once available on MELPA:
 
 ```elisp
-M-x package-install RET folgezettel-org-roam RET
+M-x package-install RET autoslip-roam RET
 ```
 
 ### Manual Installation
@@ -97,30 +102,30 @@ M-x package-install RET folgezettel-org-roam RET
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/MooersLab/folgezettel-org-roam.git
-cd folgezettel-org-roam
+git clone https://github.com/MooersLab/autoslip-roam.git
+cd autoslip-roam
 ```
 
 2. Add to your Emacs configuration:
 
 ```elisp
-(add-to-list 'load-path "/path/to/folgezettel-org-roam")
-(require 'folgezettel-org-roam)
-(folgezettel-org-roam-mode 1)
+(add-to-list 'load-path "/path/to/autoslip-roam")
+(require 'autoslip-roam)
+(autoslip-roam-mode 1)
 ```
 
 ### Using use-package
 
 ```elisp
-(use-package folgezettel-org-roam
+(use-package autoslip-roam
   :after org-roam
-  :load-path "/path/to/folgezettel-org-roam"
+  :load-path "/path/to/autoslip-roam"
   :config
-  (folgezettel-org-roam-mode 1)
+  (autoslip-roam-mode 1)
   :bind
   (:map org-mode-map
-        ("C-c n c" . folgezettel-org-roam-insert-next-child)
-        ("C-c n p" . folgezettel-org-roam-add-backlink-to-parent)))
+        ("C-c n c" . autoslip-roam-insert-next-child)
+        ("C-c n p" . autoslip-roam-add-backlink-to-parent)))
 ```
 
 ## Quick Start
@@ -128,8 +133,8 @@ cd folgezettel-org-roam
 ### 1. Enable the Mode
 
 ```elisp
-(require 'folgezettel-org-roam)
-(folgezettel-org-roam-mode 1)
+(require 'autoslip-roam)
+(autoslip-roam-mode 1)
 ```
 
 ### 2. Create a Root Note
@@ -144,7 +149,7 @@ Title: 1 Introduction to My Topic
 With the root note open:
 
 ```
-M-x folgezettel-org-roam-insert-next-child RET
+M-x autoslip-roam-insert-next-child RET
 ```
 
 The package suggests `1.1` as the first child. Enter a title when prompted.
@@ -208,7 +213,7 @@ Your content here...
 The recommended workflow:
 
 ```
-M-x folgezettel-org-roam-insert-next-child
+M-x autoslip-roam-insert-next-child
 ```
 
 This command:
@@ -221,7 +226,7 @@ This command:
 For notes created without automatic linking:
 
 ```
-M-x folgezettel-org-roam-add-backlink-to-parent
+M-x autoslip-roam-add-backlink-to-parent
 ```
 
 ### Validating Addresses
@@ -229,7 +234,7 @@ M-x folgezettel-org-roam-add-backlink-to-parent
 Check if an address is valid:
 
 ```
-M-x folgezettel-org-roam-report-validation-errors RET 1.2a RET
+M-x autoslip-roam-report-validation-errors RET 1.2a RET
 ```
 
 ### Diagnosing Issues
@@ -237,67 +242,182 @@ M-x folgezettel-org-roam-report-validation-errors RET 1.2a RET
 Debug parent-finding problems:
 
 ```
-M-x folgezettel-org-roam-diagnose-address RET 1.2 RET
+M-x autoslip-roam-diagnose-address RET 1.2 RET
 ```
 
 ## Configuration
 
-All options are in the `folgezettel-org-roam` customization group:
+All options are in the `autoslip-roam` customization group:
 
 ```
-M-x customize-group RET folgezettel-org-roam RET
+M-x customize-group RET autoslip-roam RET
 ```
 
 ### Key Options
 
 ```elisp
 ;; Heading for parent links in child notes
-(setq folgezettel-org-roam-backlink-heading "Parent Note")
+(setq autoslip-roam-backlink-heading "Parent Note")
 
 ;; Heading for child links in parent notes
-(setq folgezettel-org-roam-forward-link-heading "Child Notes")
+(setq autoslip-roam-forward-link-heading "Child Notes")
 
 ;; Enable automatic cross-reference links
-(setq folgezettel-org-roam-auto-crosslink t)
+(setq autoslip-roam-auto-crosslink t)
 
 ;; Sync database before queries (recommended)
-(setq folgezettel-org-roam-sync-db-before-queries t)
+(setq autoslip-roam-sync-db-before-queries t)
+
+;; Where to store parent and child references.
+;; 'headings (default) writes visible "Parent Note" and "Child Notes" sections.
+;; 'properties writes to a top-level property drawer (quiet mode).
+(setq autoslip-roam-link-storage 'headings)
+
+;; Property keys used when link storage is 'properties.
+(setq autoslip-roam-parent-property "FZ_PARENT")
+(setq autoslip-roam-children-property "FZ_CHILDREN")
+
+;; Rename a note's file on disk when its folgezettel address changes.
+(setq autoslip-roam-rename-files-on-reparent t)
+
+;; Heading used above chain-of-thought outlines inserted into notes.
+(setq autoslip-roam-chain-heading "Chain of Thought")
+
+;; Heading used above cross-linked chains-of-thought inserted into notes.
+(setq autoslip-roam-chain-crosslink-heading "Cross-linked Chains of Thought")
 ```
+
+### Link Storage Modes
+
+The package supports two modes for recording parent and child references,
+selectable with `autoslip-roam-link-storage`:
+
+- `'headings` (default) writes visible `** Parent Note` and `** Child Notes`
+  sections in the note body. This is the original behavior and is useful
+  when you want to see the links inline while reading or exporting.
+- `'properties` writes the references to a top-level property drawer
+  (`:FZ_PARENT:` and `:FZ_CHILDREN:`) and leaves the body untouched. This
+  reduces merge-conflict surface on shared vaults, keeps exports clean, and
+  still records the relationships for programmatic traversal.
+
+Both modes are compatible with `goto-parent`, `list-children`, `show-tree`,
+and the reparent commands.
 
 ### Full Example Configuration
 
 ```elisp
-(use-package folgezettel-org-roam
+(use-package autoslip-roam
   :after org-roam
   :config
-  (setq folgezettel-org-roam-parent-link-description "↑ Parent"
-        folgezettel-org-roam-backlink-heading "Parent Note"
-        folgezettel-org-roam-forward-link-heading "Child Notes"
-        folgezettel-org-roam-crosslink-heading "Cross References"
-        folgezettel-org-roam-auto-crosslink t
-        folgezettel-org-roam-sync-db-before-queries t)
-  (folgezettel-org-roam-mode 1)
+  (setq autoslip-roam-parent-link-description "↑ Parent"
+        autoslip-roam-backlink-heading "Parent Note"
+        autoslip-roam-forward-link-heading "Child Notes"
+        autoslip-roam-crosslink-heading "Cross References"
+        autoslip-roam-auto-crosslink t
+        autoslip-roam-sync-db-before-queries t)
+  (autoslip-roam-mode 1)
   :bind
   (:map org-mode-map
-        ("C-c n c" . folgezettel-org-roam-insert-next-child)
-        ("C-c n p" . folgezettel-org-roam-add-backlink-to-parent)
-        ("C-c n v" . folgezettel-org-roam-report-validation-errors)))
+        ("C-c n c" . autoslip-roam-insert-next-child)
+        ("C-c n p" . autoslip-roam-add-backlink-to-parent)
+        ("C-c n v" . autoslip-roam-report-validation-errors)))
 ```
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `folgezettel-org-roam-mode` | Toggle the minor mode |
-| `folgezettel-org-roam-insert-next-child` | Create a new child note |
-| `folgezettel-org-roam-add-backlink-to-parent` | Add bidirectional links manually |
-| `folgezettel-org-roam-report-validation-errors` | Validate an address |
-| `folgezettel-org-roam-diagnose-address` | Debug address lookup |
-| `folgezettel-org-roam-check-duplicate-index` | Check for duplicates |
+| `autoslip-roam-mode` | Toggle the minor mode |
+| `autoslip-roam-insert-next-child` | Create a new child note |
+| `autoslip-roam-add-backlink-to-parent` | Add bidirectional links manually |
+| `autoslip-roam-report-validation-errors` | Validate an address |
+| `autoslip-roam-diagnose-address` | Debug address lookup |
+| `autoslip-roam-check-duplicate-index` | Check for duplicates |
+| `autoslip-roam-goto-parent` | Visit the parent of the current note |
+| `autoslip-roam-list-children` | Pick a direct child of the current note and visit it |
+| `autoslip-roam-show-tree` | Display the whole vault as a folgezettel-ordered tree |
+| `autoslip-roam-show-chain-of-thought` | Open a buffer that lists every ancestor of the current note |
+| `autoslip-roam-insert-chain-of-thought` | Insert the ancestor chain as an org outline at point |
+| `autoslip-roam-show-crosslinked-chains` | Open a buffer grouping each cross-linked note's own ancestor chain |
+| `autoslip-roam-reparent` | Move the current note to a new folgezettel address |
+| `autoslip-roam-reparent-subtree` | Move the current note and all descendants to a new address |
+
+### Navigation
+
+`autoslip-roam-goto-parent` walks from the current note to the node
+whose folgezettel address is one step shallower and opens it. It errors
+helpfully when the current note is a root.
+
+`autoslip-roam-list-children` offers a completion list of every direct
+child of the current note, ordered by folgezettel, and visits the choice.
+
+`autoslip-roam-show-tree` opens a `*Autoslip Tree*` buffer with one
+line per node, indented by depth, sorted in canonical folgezettel order.
+Press `RET` on any line to visit that note, `n` and `p` to move between
+lines, `g` to refresh, and `q` to close the buffer.
+
+### Chain of Thought
+
+`autoslip-roam-show-chain-of-thought` walks from the current note up
+through every ancestor to the root of its folgezettel tree and displays the
+chain in a `*Autoslip Chain of Thought*` buffer. Unlike the tree view,
+the chain shows only the connecting notes (the ancestors), not the rest of
+the subtree. Press `RET` on any line to visit the corresponding note, `i`
+to insert the chain into the note that you opened the buffer from, `g` to
+refresh, and `q` to close.
+
+`autoslip-roam-insert-chain-of-thought` writes the chain directly at
+point in the current note as an indented org bullet list, each item a
+link to the corresponding org-roam node. The heading text above the list
+comes from `autoslip-roam-chain-heading` (set to nil for no heading).
+
+### Cross-linked Chains of Thought
+
+`autoslip-roam-show-crosslinked-chains` is for the moment when you
+have notes cross-linked to the current note and you want to understand the
+context each of those cross-linked notes sits in, not just its title. The
+command reads every `[[id:...]]` under the Cross References heading of the
+current note, looks up each target note, and renders one ancestor chain
+per cross-link in the `*Autoslip Cross-linked Chains*` buffer. Press
+`RET` to visit a node, `i` to insert all the chains into the current note,
+`g` to refresh, and `q` to close.
+
+### Renumbering (Reparenting)
+
+`autoslip-roam-reparent` changes the folgezettel address of the
+current note:
+
+1. It validates the new address and refuses duplicates.
+2. It rewrites the title keyword to start with the new address.
+3. It removes the old parent's forward link and the old `Parent Note`
+   section (or the equivalent property entries), then writes the new ones.
+4. When `autoslip-roam-rename-files-on-reparent` is non-nil, it also
+   renames the file on disk so the filename prefix matches the new address.
+
+`autoslip-roam-reparent-subtree` does the same for the current note
+and recursively applies the shift to every descendant, so moving `1.2a` to
+`1.4a` also moves `1.2a3`, `1.2a3b`, and so on. The command pre-checks for
+collisions with unrelated notes before making any changes.
+
+### Suggested Key Bindings
+
+```elisp
+(with-eval-after-load 'org-roam
+  (define-key org-mode-map (kbd "C-c n c") #'autoslip-roam-insert-next-child)
+  (define-key org-mode-map (kbd "C-c n p") #'autoslip-roam-add-backlink-to-parent)
+  (define-key org-mode-map (kbd "C-c n u") #'autoslip-roam-goto-parent)
+  (define-key org-mode-map (kbd "C-c n d") #'autoslip-roam-list-children)
+  (define-key org-mode-map (kbd "C-c n t") #'autoslip-roam-show-tree)
+  (define-key org-mode-map (kbd "C-c n h") #'autoslip-roam-show-chain-of-thought)
+  (define-key org-mode-map (kbd "C-c n H") #'autoslip-roam-insert-chain-of-thought)
+  (define-key org-mode-map (kbd "C-c n x") #'autoslip-roam-show-crosslinked-chains)
+  (define-key org-mode-map (kbd "C-c n r") #'autoslip-roam-reparent)
+  (define-key org-mode-map (kbd "C-c n R") #'autoslip-roam-reparent-subtree))
+```
 
 ## Testing
 
-The package includes 64 comprehensive tests.
+The package includes 100 comprehensive tests.
 
 ### Running Tests from Command Line
 
@@ -322,7 +442,7 @@ make test-specific TEST=test-parse-address-single-number
 
 ```elisp
 ;; Load and run all tests
-(load-file "test-folgezettel-org-roam.el")
+(load-file "test-autoslip-roam.el")
 M-x ert RET t RET
 
 ;; Run specific category
@@ -333,16 +453,26 @@ M-x ert RET ^test-parse RET
 
 | Category | Tests | Description |
 |----------|-------|-------------|
-| Parsing | 9 | Address parsing |
+| Parsing | 7 | Address parsing |
 | Extraction | 5 | Title extraction |
 | Letter sequences | 5 | Alphabet incrementing |
-| Validation | 16 | Address validation |
+| Validation | 13 | Address validation |
 | Suggestions | 8 | Child suggestions |
+| Parent lookup | 6 | Find-parent and index-exists helpers |
 | Link insertion | 6 | File operations |
 | Integration | 2 | Full workflows |
 | Edge cases | 5 | Boundary conditions |
 | Regression | 5 | Fixed bugs |
 | Performance | 2 | Speed tests |
+| Address helpers | 5 | Depth, tokens, canonical ordering |
+| Children lookup | 2 | Direct-children discovery |
+| Rename helpers | 4 | Address-driven file renaming |
+| Link storage | 3 | Property-drawer storage mode |
+| Reparent helpers | 3 | Title, backlink, and forward-link rewrites |
+| Tree view | 2 | `show-tree` buffer contents |
+| Navigation | 3 | `goto-parent` and `list-children` commands |
+| Chain of thought | 9 | Ancestor walk, org-list rendering, `show` and `insert` |
+| Cross-linked chains | 5 | Cross-link id extraction and `show-crosslinked-chains` |
 
 ## Info Documentation
 
@@ -379,13 +509,13 @@ Then add to your `init.el`:
 After installation:
 
 ```
-C-h i d m Folgezettel Org-Roam RET
+C-h i d m Autoslip Roam RET
 ```
 
 Or:
 
 ```
-M-x info RET m Folgezettel Org-Roam RET
+M-x info RET m Autoslip Roam RET
 ```
 
 ## Troubleshooting
@@ -394,14 +524,14 @@ M-x info RET m Folgezettel Org-Roam RET
 
 1. Verify the parent exists with correct folgezettel in title
 2. Run `M-x org-roam-db-sync` to update the database
-3. Use `M-x folgezettel-org-roam-diagnose-address` to debug
+3. Use `M-x autoslip-roam-diagnose-address` to debug
 
 ### Links Not Appearing
 
 Ensure database sync is enabled:
 
 ```elisp
-(setq folgezettel-org-roam-sync-db-before-queries t)
+(setq autoslip-roam-sync-db-before-queries t)
 ```
 
 ### Invalid Address Errors
@@ -416,13 +546,13 @@ Common issues:
 Verify the mode is active:
 
 ```elisp
-(folgezettel-org-roam-mode 1)
+(autoslip-roam-mode 1)
 ```
 
 Check the hook is registered:
 
 ```elisp
-(member 'folgezettel-org-roam--process-new-node
+(member 'autoslip-roam--process-new-node
         org-roam-capture-new-node-hook)
 ```
 
@@ -440,8 +570,8 @@ Contributions are welcome! Please:
 ### Development Setup
 
 ```bash
-git clone https://github.com/MooersLab/folgezettel-org-roam.git
-cd folgezettel-org-roam
+git clone https://github.com/MooersLab/autoslip-roam.git
+cd autoslip-roam
 make check-deps  # Verify dependencies
 make test        # Run test suite
 make check       # Run all quality checks
@@ -460,13 +590,21 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 
 ## Status
 
-It works!
+The package is actively maintained and used in the author's daily workflow.
+Core features (automatic bidirectional linking, validation, child-address
+suggestion, cross-reference links, navigation, tree view, chain of thought,
+cross-linked chains of thought, reparenting, and the quiet property-drawer
+storage mode) are covered by 100 ERT tests that run under `make test`.
+Feedback and patches are welcome via the issue tracker.
 
 ## Update history
 
-|Version      | Changes                                                                                                                                   | Date              |
-|:-----------|:------------------------------------------------------------------------------------------------------------------------------------------|:--------------------|
-| Version 0.1 |  Initi commitExtensive edits of the README.md.                                                                                           | 2026 January 31    |
+| Version | Changes | Date |
+|:--------|:--------|:-----|
+| 3.0.0 | Renamed the package from `folgezettel-org-roam` to `autoslip-roam`. Every public symbol, file, buffer name, mode name, and customization group was renamed in step. Users upgrading from 2.x will need to update their `require` form, their customizations, and any key bindings to the new prefix. | 2026-04-23 |
+| 2.5.0 | Added `show-chain-of-thought`, `insert-chain-of-thought`, and `show-crosslinked-chains` commands. Expanded the test suite to 100 tests. | 2026-04-23 |
+| 2.4.0 | Added `goto-parent`, `list-children`, `show-tree`, `reparent`, and `reparent-subtree` commands. Added a quiet property-drawer link-storage mode. Expanded the test suite to 86 tests. | 2026-04-22 |
+| 0.1 | Initial commit. Extensive edits of the README.md. | 2026-01-31 |
 
 
 ## Funding
@@ -474,4 +612,4 @@ It works!
 - NIH: P30 CA225520 (PI: R. Mannel); P30GM145423 (PI: A. West)
 
 
-**Questions?** Open an issue on [GitHub](https://github.com/MooersLab/folgezettel-org-roam/issues).
+**Questions?** Open an issue on [GitHub](https://github.com/MooersLab/autoslip-roam/issues).

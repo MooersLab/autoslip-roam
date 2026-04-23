@@ -1,0 +1,735 @@
+\input texinfo    @c -*- texinfo -*-
+@c %**start of header
+@setfilename autoslip-roam.info
+@settitle Autoslip Roam Manual
+@documentencoding UTF-8
+@documentlanguage en
+@c %**end of header
+
+@copying
+This manual is for Autoslip Roam (version 3.0.0).
+
+Copyright @copyright{} 2025 Blaine Mooers.
+
+@quotation
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.3 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts.
+@end quotation
+@end copying
+
+@dircategory Emacs
+@direntry
+* Autoslip Roam: (autoslip-roam). Automatic folgezettel linking for org-roam.
+@end direntry
+
+@titlepage
+@title Autoslip Roam Manual
+@subtitle Automatic Folgezettel Backlink Generation for Org-Roam
+@subtitle Version 3.0.0
+@author Blaine Mooers
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+@end titlepage
+
+@contents
+
+@ifnottex
+@node Top
+@top Autoslip Roam
+
+This manual describes Autoslip Roam, an Emacs package that provides
+automatic bidirectional link generation for org-roam notes using folgezettel
+(Luhmann-style) indexing.
+
+@insertcopying
+@end ifnottex
+
+@menu
+* Introduction::                What is Autoslip Roam?
+* Installation::                How to install the package.
+* Quick Start::                 Get started quickly.
+* Folgezettel Addresses::       Understanding the addressing system.
+* Usage::                       How to use the package.
+* Customization::               Configuring the package.
+* Commands::                    Interactive commands reference.
+* Testing::                     Running the test suite.
+* Troubleshooting::             Common issues and solutions.
+* Index::                       Concept and function index.
+@end menu
+
+@c ============================================================================
+@node Introduction
+@chapter Introduction
+
+@cindex folgezettel
+@cindex Zettelkasten
+@cindex Luhmann
+
+Autoslip Roam is an Emacs package that brings Niklas Luhmann's
+folgezettel (follow-up slip) system to org-roam.  The package automatically
+manages bidirectional links between parent and child notes based on their
+folgezettel addresses.
+
+@section What is a Folgezettel?
+
+A folgezettel is a sequential numbering system used in the Zettelkasten
+(slip-box) method.  Each note has an address that encodes its position in
+a hierarchy of ideas.  For example:
+
+@itemize @bullet
+@item
+@code{1} - A root note (first topic)
+@item
+@code{1.2} - Second subtopic of note 1
+@item
+@code{1.2a} - First branch from 1.2
+@item
+@code{1.2a3} - Third continuation of 1.2a
+@end itemize
+
+@section Features
+
+@itemize @bullet
+@item
+Automatic parent backlink generation when creating child notes
+@item
+Automatic forward link insertion in parent notes
+@item
+Bidirectional cross-linking when manually inserting links
+@item
+Validation to prevent invalid addresses
+@item
+Duplicate index detection
+@item
+Suggestions for next child address
+@item
+Database synchronization for immediate link visibility
+@item
+Navigation commands to jump to the parent, list direct children, or show
+the whole vault as a folgezettel-ordered tree
+@item
+Reparent commands that move a note (or an entire subtree) to a new
+folgezettel address and keep titles, links, and filenames in sync
+@item
+Chain-of-thought commands that render the path from a note to its root
+in a dedicated buffer and can insert that path into the current note
+@item
+Cross-linked chain-of-thought command that shows the folgezettel
+context of every note linked under Cross References
+@item
+Optional property-drawer link-storage mode for a quieter note body
+@end itemize
+
+@c ============================================================================
+@node Installation
+@chapter Installation
+
+@section Requirements
+
+@itemize @bullet
+@item
+Emacs 27.1 or later
+@item
+org-roam 2.0 or later
+@end itemize
+
+@section From MELPA
+
+@findex package-install
+Once the package is available on MELPA:
+
+@example
+M-x package-install RET autoslip-roam RET
+@end example
+
+@section Manual Installation
+
+@enumerate
+@item
+Clone the repository:
+@example
+git clone https://github.com/MooersLab/autoslip-roam.git
+@end example
+
+@item
+Add to your load path in @file{init.el}:
+@lisp
+(add-to-list 'load-path "/path/to/autoslip-roam")
+(require 'autoslip-roam)
+@end lisp
+
+@item
+Enable the mode:
+@lisp
+(autoslip-roam-mode 1)
+@end lisp
+@end enumerate
+
+@section Installing the Info Manual
+
+To install the Info manual for access within Emacs:
+
+@example
+make info
+sudo make install-info
+@end example
+
+Or manually:
+
+@example
+makeinfo autoslip-roam.texi
+sudo cp autoslip-roam.info /usr/local/share/info/
+sudo install-info /usr/local/share/info/autoslip-roam.info \
+    /usr/local/share/info/dir
+@end example
+
+Then access via @kbd{C-h i d m Autoslip Roam RET}.
+
+@c ============================================================================
+@node Quick Start
+@chapter Quick Start
+
+@section Basic Setup
+
+Add to your @file{init.el}:
+
+@lisp
+(require 'autoslip-roam)
+(autoslip-roam-mode 1)
+@end lisp
+
+@section Creating Your First Notes
+
+@enumerate
+@item
+Create a root note with a folgezettel title:
+@example
+M-x org-roam-node-find RET
+Title: 1 My First Topic
+@end example
+
+@item
+Open the root note and create a child:
+@example
+M-x autoslip-roam-insert-next-child RET
+@end example
+
+@item
+The package suggests @code{1.1} as the first child.  Enter a title when prompted.
+
+@item
+Both notes now have bidirectional links:
+@itemize @minus
+@item
+Child note has ``Parent Note'' section with link to @code{1}
+@item
+Parent note has ``Child Notes'' section with link to child
+@end itemize
+@end enumerate
+
+@c ============================================================================
+@node Folgezettel Addresses
+@chapter Folgezettel Addresses
+
+@cindex address format
+@cindex hierarchy
+
+@section Address Structure
+
+Folgezettel addresses follow a strict hierarchical pattern:
+
+@table @code
+@item 1, 2, 3, ...
+Root notes (single numbers)
+@item 1.1, 1.2, 1.13, ...
+First-level subtopics (number DOT number)
+@item 1.2a, 1.2b, ..., 1.2z
+Letter branches (lowercase letters)
+@item 1.2aa, 1.2ab, ..., 1.2zz
+Extended letter branches (after z comes aa)
+@item 1.2a1, 1.2a2, ...
+Numeric continuations of letter branches
+@end table
+
+@section Alternation Rules
+
+The address system follows strict alternation:
+
+@enumerate
+@item
+Root numbers can only have DOT-number children (@code{1} @result{} @code{1.1})
+@item
+DOT-number nodes can only have letter children (@code{1.1} @result{} @code{1.1a})
+@item
+Letter-ending nodes can only have number children (@code{1.1a} @result{} @code{1.1a1})
+@item
+The pattern continues alternating
+@end enumerate
+
+@section Parent-Child Relationships
+
+@multitable @columnfractions .3 .3 .4
+@headitem Child @tab Parent @tab Relationship
+@item @code{1.2} @tab @code{1} @tab Remove .number
+@item @code{1.2a} @tab @code{1.2} @tab Remove letters
+@item @code{1.2aa} @tab @code{1.2} @tab Remove ALL letters
+@item @code{1.2a3} @tab @code{1.2a} @tab Remove trailing number
+@item @code{1.2a3b} @tab @code{1.2a3} @tab Remove trailing letters
+@end multitable
+
+@section Valid vs Invalid Addresses
+
+@subsection Valid Examples
+@itemize @bullet
+@item @code{1} - Root note
+@item @code{1.13} - Multi-digit subtopic
+@item @code{1.2a} - Single letter branch
+@item @code{1.2aa} - Extended letter (27th child)
+@item @code{1.2a3c5d7} - Deep hierarchy
+@end itemize
+
+@subsection Invalid Examples
+@itemize @bullet
+@item @code{1.2.3} - Multiple periods not allowed
+@item @code{1.2A} - Uppercase not allowed
+@item @code{1.2a!} - Special characters not allowed
+@item @code{a1} - Must start with number
+@end itemize
+
+@c ============================================================================
+@node Usage
+@chapter Usage
+
+@section Automatic Link Creation
+
+@cindex automatic linking
+When @code{autoslip-roam-mode} is enabled, creating a new note with
+a folgezettel address automatically:
+
+@enumerate
+@item
+Identifies the parent note based on the address
+@item
+Inserts a backlink under @samp{** Parent Note} in the new note
+@item
+Inserts a forward link under @samp{** Child Notes} in the parent
+@end enumerate
+
+@section Creating Child Notes
+
+@findex autoslip-roam-insert-next-child
+The recommended way to create child notes:
+
+@example
+M-x autoslip-roam-insert-next-child
+@end example
+
+This command:
+@enumerate
+@item
+Reads the current note's folgezettel address
+@item
+Suggests the next available child address
+@item
+Prompts for a title
+@item
+Creates the note with proper bidirectional links
+@end enumerate
+
+@section Manual Link Addition
+
+@findex autoslip-roam-add-backlink-to-parent
+For existing notes without links:
+
+@example
+M-x autoslip-roam-add-backlink-to-parent
+@end example
+
+@section Cross-Reference Links
+
+@cindex cross-references
+When you insert a link to another org-roam note using @kbd{C-c C-l} or
+@code{org-roam-node-insert}, a reciprocal link is automatically created
+in the target note under @samp{** Cross References}.
+
+This can be disabled:
+@lisp
+(setq autoslip-roam-auto-crosslink nil)
+@end lisp
+
+@c ============================================================================
+@node Customization
+@chapter Customization
+
+@findex customize-group
+All customization options are in the @code{autoslip-roam} group:
+
+@example
+M-x customize-group RET autoslip-roam RET
+@end example
+
+@section Link Descriptions
+
+@defopt autoslip-roam-parent-link-description
+Description text for parent links.  Default: @code{"Parent note"}.
+@end defopt
+
+@defopt autoslip-roam-child-link-description
+Description for child links.  If @code{nil} (default), uses the child's title.
+@end defopt
+
+@section Headings
+
+@defopt autoslip-roam-backlink-heading
+Heading for parent links in child notes.  Default: @code{"Parent Note"}.
+Set to @code{nil} to insert without a heading.
+@end defopt
+
+@defopt autoslip-roam-forward-link-heading
+Heading for child links in parent notes.  Default: @code{"Child Notes"}.
+@end defopt
+
+@defopt autoslip-roam-crosslink-heading
+Heading for cross-reference links.  Default: @code{"Cross References"}.
+@end defopt
+
+@section Behavior
+
+@defopt autoslip-roam-auto-crosslink
+Enable automatic reciprocal links when inserting cross-references.
+Default: @code{t}.
+@end defopt
+
+@defopt autoslip-roam-sync-db-before-queries
+Sync org-roam database before queries.  Default: @code{t}.
+Recommended for reliability.
+@end defopt
+
+@section Link Storage
+
+@defopt autoslip-roam-link-storage
+How to record parent and child references.  The value @code{'headings}
+(default) writes visible @samp{** Parent Note} and @samp{** Child Notes}
+sections in the note body.  The value @code{'properties} writes the
+references to a top-level property drawer instead, keeping the body
+untouched.  The property-drawer mode is useful in shared vaults where
+the visible heading noise creates merge-conflict surface.
+@end defopt
+
+@defopt autoslip-roam-parent-property
+Property key used for the parent reference when link storage is
+@code{'properties}.  Default: @code{"FZ_PARENT"}.
+@end defopt
+
+@defopt autoslip-roam-children-property
+Property key used for the list of child references when link storage is
+@code{'properties}.  Default: @code{"FZ_CHILDREN"}.
+@end defopt
+
+@section Reparenting
+
+@defopt autoslip-roam-rename-files-on-reparent
+Whether @code{autoslip-roam-reparent} and
+@code{autoslip-roam-reparent-subtree} should rename each affected
+file on disk so that the filename prefix matches the new folgezettel
+address.  Default: @code{t}.
+@end defopt
+
+@section Chain of Thought
+
+@defopt autoslip-roam-chain-heading
+Second-level heading written above a chain-of-thought outline that is
+inserted into a note.  Default: @code{"Chain of Thought"}.  Set to
+@code{nil} to insert without a heading.
+@end defopt
+
+@defopt autoslip-roam-chain-crosslink-heading
+Heading written above cross-linked chains-of-thought inserted into a
+note.  Default: @code{"Cross-linked Chains of Thought"}.
+@end defopt
+
+@section Example Configuration
+
+@lisp
+(use-package autoslip-roam
+  :after org-roam
+  :config
+  (setq autoslip-roam-parent-link-description "↑ Parent"
+        autoslip-roam-backlink-heading "Parent Note"
+        autoslip-roam-forward-link-heading "Child Notes"
+        autoslip-roam-auto-crosslink t)
+  (autoslip-roam-mode 1))
+@end lisp
+
+@c ============================================================================
+@node Commands
+@chapter Commands
+
+@section Interactive Commands
+
+@deffn Command autoslip-roam-mode
+Toggle the minor mode.  When enabled, automatically creates bidirectional
+links for new notes with folgezettel addresses.
+@end deffn
+
+@deffn Command autoslip-roam-insert-next-child
+Create a new child note of the current note.  Suggests the next available
+address and prompts for a title.  Creates bidirectional links automatically.
+@end deffn
+
+@deffn Command autoslip-roam-add-backlink-to-parent
+Manually add bidirectional links between the current note and its parent.
+Useful for existing notes or when automatic linking fails.
+@end deffn
+
+@deffn Command autoslip-roam-report-validation-errors address
+Interactively validate an address and display any errors.
+@end deffn
+
+@deffn Command autoslip-roam-diagnose-address address
+Diagnose issues finding a folgezettel address in the database.
+Shows all nodes and their extracted addresses.
+@end deffn
+
+@deffn Command autoslip-roam-check-duplicate-index address
+Check if an address is already used.  Warns if duplicate found.
+@end deffn
+
+@section Navigation Commands
+
+@deffn Command autoslip-roam-goto-parent
+Visit the parent of the current note.  The parent is the node whose
+folgezettel address is one step shallower than the current one.  Errors
+when the current note is a root.
+@end deffn
+
+@deffn Command autoslip-roam-list-children
+Prompt with a completion list of the current note's direct children,
+ordered by folgezettel, and visit the selection.
+@end deffn
+
+@deffn Command autoslip-roam-show-tree
+Open the @file{*Autoslip Tree*} buffer, a read-only outline of every
+folgezettel-addressed node in the vault, sorted in canonical folgezettel
+order and indented by depth.  In that buffer, @kbd{RET} visits the node on
+the current line, @kbd{n} and @kbd{p} move between lines, @kbd{g} refreshes
+the view, and @kbd{q} buries the buffer.
+@end deffn
+
+@section Chain-of-Thought Commands
+
+@deffn Command autoslip-roam-show-chain-of-thought
+Open the @file{*Autoslip Chain of Thought*} buffer, which lists every
+ancestor of the current note from root to leaf along a single folgezettel
+chain.  The view shows only the connecting notes (not the rest of the
+subtree).  In that buffer, @kbd{RET} visits the node on the current line,
+@kbd{i} inserts the chain into the note that opened the buffer, @kbd{g}
+refreshes, @kbd{n} and @kbd{p} move between lines, and @kbd{q} buries the
+buffer.
+@end deffn
+
+@deffn Command autoslip-roam-insert-chain-of-thought
+Insert the current note's chain of thought at point as an indented org
+bullet list.  Each bullet is a link to the corresponding org-roam node,
+and the heading above the list is controlled by
+@code{autoslip-roam-chain-heading}.
+@end deffn
+
+@deffn Command autoslip-roam-show-crosslinked-chains
+Open the @file{*Autoslip Cross-linked Chains*} buffer.  For every note
+linked under @code{autoslip-roam-crosslink-heading} in the current
+note, the command walks that note's own folgezettel chain and renders it
+as a distinct block in the buffer.  This gives the reader the context each
+cross-link sits in rather than just the link's title.  Press @kbd{i} in
+the buffer to insert all the chains into the current note.
+@end deffn
+
+@section Reparenting Commands
+
+@deffn Command autoslip-roam-reparent new-address
+Change the folgezettel address of the current note to
+@var{new-address}.  The command validates the new address, rejects
+duplicates, updates the title keyword, rewrites the parent backlink, and
+updates the old and new parents' forward-link sections.  When
+@code{autoslip-roam-rename-files-on-reparent} is non-nil, it also
+renames the file on disk.
+@end deffn
+
+@deffn Command autoslip-roam-reparent-subtree new-address
+Like @code{autoslip-roam-reparent}, but also moves every descendant
+of the current note so that their addresses all shift to live under
+@var{new-address}.  The command pre-checks for address collisions with
+unrelated notes and aborts without making changes if any are found.
+@end deffn
+
+@section Suggested Key Bindings
+
+@lisp
+(with-eval-after-load 'org-roam
+  (define-key org-mode-map (kbd "C-c n c") #'autoslip-roam-insert-next-child)
+  (define-key org-mode-map (kbd "C-c n p") #'autoslip-roam-add-backlink-to-parent)
+  (define-key org-mode-map (kbd "C-c n u") #'autoslip-roam-goto-parent)
+  (define-key org-mode-map (kbd "C-c n d") #'autoslip-roam-list-children)
+  (define-key org-mode-map (kbd "C-c n t") #'autoslip-roam-show-tree)
+  (define-key org-mode-map (kbd "C-c n h") #'autoslip-roam-show-chain-of-thought)
+  (define-key org-mode-map (kbd "C-c n H") #'autoslip-roam-insert-chain-of-thought)
+  (define-key org-mode-map (kbd "C-c n x") #'autoslip-roam-show-crosslinked-chains)
+  (define-key org-mode-map (kbd "C-c n r") #'autoslip-roam-reparent)
+  (define-key org-mode-map (kbd "C-c n R") #'autoslip-roam-reparent-subtree))
+@end lisp
+
+@c ============================================================================
+@node Testing
+@chapter Testing
+
+@cindex testing
+@cindex ERT
+
+The package includes a comprehensive test suite with 100 tests.
+
+@section Running Tests
+
+@subsection From Command Line
+
+@example
+# Run all tests
+make test
+
+# Run unit tests only
+make test-unit
+
+# Run integration tests
+make test-integration
+
+# Run with verbose output
+make test-verbose
+@end example
+
+@subsection From Within Emacs
+
+@example
+M-x ert RET t RET
+@end example
+
+Or load and run specific categories:
+
+@lisp
+(load-file "test-autoslip-roam.el")
+(ert-run-tests-interactively "^test-parse")
+@end lisp
+
+@section Test Categories
+
+@multitable @columnfractions .3 .1 .6
+@headitem Category @tab Count @tab Description
+@item Parsing @tab 7 @tab Address parsing functions
+@item Extraction @tab 5 @tab Title extraction
+@item Letter sequences @tab 5 @tab Alphabet incrementing
+@item Validation @tab 13 @tab Address validation
+@item Suggestions @tab 8 @tab Child address suggestions
+@item Parent lookup @tab 6 @tab @code{find-parent} and @code{index-exists} helpers
+@item Link insertion @tab 6 @tab Link creation in files
+@item Integration @tab 2 @tab Full workflow tests
+@item Edge cases @tab 5 @tab Boundary conditions
+@item Regression @tab 5 @tab Previously fixed bugs
+@item Performance @tab 2 @tab Speed benchmarks
+@item Address helpers @tab 5 @tab Depth, tokens, canonical ordering
+@item Children lookup @tab 2 @tab Direct-children discovery
+@item Rename helpers @tab 4 @tab Address-driven file renaming
+@item Link storage @tab 3 @tab Property-drawer storage mode
+@item Reparent helpers @tab 3 @tab Title, backlink, and forward-link rewrites
+@item Tree view @tab 2 @tab @code{show-tree} buffer contents
+@item Navigation @tab 3 @tab @code{goto-parent} and @code{list-children}
+@item Chain of thought @tab 9 @tab Ancestor walk, org-list rendering, show/insert
+@item Cross-linked chains @tab 5 @tab Cross-link id extraction and @code{show-crosslinked-chains}
+@end multitable
+
+@section Test File Structure
+
+The test file @file{test-autoslip-roam.el} includes:
+
+@itemize @bullet
+@item
+Mock infrastructure for org-roam nodes
+@item
+Temporary directory management
+@item
+Helper functions for test isolation
+@item
+Comprehensive assertions with clear failure messages
+@end itemize
+
+@c ============================================================================
+@node Troubleshooting
+@chapter Troubleshooting
+
+@section Parent Note Not Found
+
+@cindex troubleshooting
+
+If the parent note is not found:
+
+@enumerate
+@item
+Run @code{M-x autoslip-roam-diagnose-address} with the parent address
+@item
+Verify the parent note exists with the correct folgezettel in its title
+@item
+Run @code{M-x org-roam-db-sync} to update the database
+@end enumerate
+
+@section Links Not Appearing in Backlinks Buffer
+
+Ensure database sync is enabled:
+
+@lisp
+(setq autoslip-roam-sync-db-before-queries t)
+@end lisp
+
+@section Invalid Address Errors
+
+Use validation to check addresses:
+
+@example
+M-x autoslip-roam-report-validation-errors RET 1.2a RET
+@end example
+
+Common issues:
+@itemize @bullet
+@item
+Multiple periods (@code{1.2.3}) - only one allowed
+@item
+Uppercase letters (@code{1.2A}) - use lowercase only
+@item
+Special characters - only digits, lowercase letters, and one period
+@end itemize
+
+@section Mode Not Working
+
+Verify the mode is enabled:
+
+@lisp
+(autoslip-roam-mode 1)
+@end lisp
+
+Check that the hook is registered:
+
+@lisp
+(member 'autoslip-roam--process-new-node
+        org-roam-capture-new-node-hook)
+@end lisp
+
+@c ============================================================================
+@node Index
+@appendix Index
+
+@section Concept Index
+@printindex cp
+
+@section Function Index
+@printindex fn
+
+@bye
