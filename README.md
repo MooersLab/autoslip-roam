@@ -22,26 +22,56 @@ You do not need to click a button to add the links; they are added automatically
 The folgezettel index determines the order in which a new note is to be placed in a series of notes in a paper-based zettelkasten.
 The ability to print these indices with the notes provides a bridge between electronic and paper-based zettelkastens.
 This bridge supports hybrid, mirror, and project-based approaches.
-In the project-based approach, notes on paper are used during the assembly of manuscripts, where they are ordered and rearranged on a physical tabletop or corkboard.
+In the project-based approach, notes on paper are used during the assembly of a manuscript, where they are ordered and rearranged on a physical tabletop or corkboard.
 
 Most electronic zettelkastens rely either on timestamps or a database ID to identify each unique note. 
 This approach is hopeless if one wants to print out their zettels to store them in a paper-based zettelkasten. 
-Fans of the paper-based approach may object that you should write these notes by hand to better integrate the information into your memory. 
+Fans of the paper-based approach may object to the printed zettels; they claim that you should write these notes by hand to better integrate the information into your memory. 
 This may be true, but more frequent perusal of the paper zettelkasten may be compensatory and possibly more effective in the long term. 
-Often, there is just not enough time available to rewrite the notes by hand.
 
-There is no rule against mixing handwritten and printed notes together. The inclusion of the folgezettel index in the title indicates where to store the note. Paper-based zettelkastens rely on the folgezettel index (or alternatively the Luhmann-style index or the Scott Scheper index, which are not computer-compatible) to specify the linear order of note storage. There is a one-to-one mapping between the zettelkasten graph and the order in which the notes are stored.
+Often, there is not enough time available to rewrite all of the notes by hand.
+Nor is there time to convert handwritten notes into an electronic format.
+There is no rule against mixing handwritten and printed notes together. 
+Spending time frequently perusing the notes is the main limiting factor to the successful use of  a zettelkasten as a tool for thinking, not the format of the notes.
 
-This approach supports a hybrid zettelkasten, with part electronic and part paper-based. Of course, it also supports a mirrored zettelkasten in both paper and electronic form.
 
-You can print a note on US letter-size paper, fold it in half with the title facing outward, and store it in this zettelkasten. This folded paper corresponds to A5-sized paper. Luhmann used the smaller A6-sized paper.
+The inclusion of the folgezettel index in the title indicates where to store the note. 
+Paper-based zettelkastens rely on the folgezettel index (or alternatively the Luhmann-style index or the Scott Scheper index, both of which are not computer-compatible) to specify the linear order of note storage. 
+There is a one-to-one mapping between the zettelkasten graph and the order in which the notes are stored.
 
-If the note spans multiple pages, as may be the case with a structure, keyword, or hub note, you can fold the pages in half together. You can also save paper and space by printing double-sided, resulting in a booklet with two pages per side. For example, an eight-page note would span both sides of two sheets of US letter paper. The text will be rotated by 90°, so you will need to write the index across the top of the outside side of the folded paper. I favor this approach over index cards because it provides more space and because US Letter printer paper is cheaper and more readily available. This more practical approach reduces the friction of adding new notes to your paper-based zettelkasten.
+This approach supports a hybrid zettelkasten, with part electronic and part paper-based. 
+Of course, it also supports a mirrored zettelkasten in both paper and electronic form.
 
-Obsidian offers a fantastic, infinite canvas for displaying and organizing notes in all kinds of configurations. The ability to print out the notes opens up the opportunity to work with paper versions on a large tabletop or a corkboard. Sometimes, changing the context from electronic to physical can stimulate the mind. This alternative physical approach to arranging notes is useful when assembling a manuscript. You can use the canvas to combine all the notes you want to print. This could be useful for one-off tasks, such as assembling a manuscript, where you may discard the paper notes when you are done.
+You can print a note on US letter-size paper, fold it in half with the title facing outward, and store it in this zettelkasten. 
+This folded paper correspondsroughly to A5-sized paper. 
+Luhmann used the smaller A6-sized paper.
+
+If the note spans multiple pages, as may be the case with a structure, keyword, or hub note, you can fold the pages in half together. 
+You can also save paper and space by printing double-sided, resulting in a booklet with two pages per side. 
+For example, an eight-page note would span both sides of two sheets of US letter paper. 
+The text will be rotated by 90°, so you will need to write the index across the top of the outside side of the folded paper. 
+
+I favor this approach over the use of index cards because it provides more space and because US Letter printer paper is cheaper and more readily available. 
+This more practical approach reduces the friction of adding new notes to your paper-based zettelkasten.
+
+Obsidian offers a fantastic, infinite canvas for displaying and organizing notes in all kinds of configurations. 
+The ability to print out the notes opens up the opportunity to work with paper versions on a large tabletop or a corkboard. 
+Sometimes, changing the context from electronic to physical can stimulate the mind. 
+This alternative physical approach to arranging notes is useful when assembling a manuscript. 
+You can use the canvas to combine all the notes you want to print. 
+This could be useful for one-off tasks, such as assembling a manuscript, where you may discard the paper notes when you are done.
 
 ### Adding some order to the zettelkasten
-Some hierarchical order is necessary to ease navigation of the zettelkasten because keyword searching does not guarantee that you will retrieve all relevant notes. Luhmann's paper version had order provided by his indexing system. Disorder was provided by cross-links between notes. According to Luhmann, you need both order and disorder. The optimal mix of order and disorder will probably vary with project and user. Luhmann's indexing system started with root nodes numbered with integers, separated by backslashes from the indices of the descendant nodes. I recommend spending an hour early on identifying a list of areas of knowledge you want to store notes on in the zettelkasten. These areas can serve as your root nodes. You can expand this list as your interests evolve.
+Some hierarchical order is necessary to ease navigation of the zettelkasten because keyword searching does not guarantee that you will retrieve all relevant notes. 
+Luhmann's paper version had order provided by his indexing system. 
+Disorder was provided by cross-links between notes. 
+According to Luhmann, you need both order and disorder. 
+The optimal mix of order and disorder will probably vary with project and user. 
+Luhmann's indexing system started with root nodes numbered with integers, separated by backslashes from the indices of the descendant nodes. 
+
+When starting a zetterlkasten, I recommend spending an hour or more identifying a list of areas of knowledge you want to store notes on in the zettelkasten. 
+These areas can serve as your root nodes. 
+You can expand this list as your interests evolve.
 
 ## Table of Contents
 
@@ -148,7 +178,8 @@ M-x org-roam-node-find RET
 Title: 1. Introduction to My Topic
 ```
 
-Root note titles carry a trailing period after the integer (e.g., `1.`), matching the style used in numbered outlines like `1. Crystallography`. Legacy titles without the trailing period (e.g., `1 Introduction`) are still recognized and are treated as equivalent to the canonical form.
+Root note titles carry a trailing period after the integer (e.g., `1.`), matching the style used in numbered outlines like `1. Crystallography`. 
+Legacy titles without the trailing period (e.g., `1 Introduction`) are still recognized and are treated as equivalent to the canonical form.
 
 ### 3. Create a Child Note
 
