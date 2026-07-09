@@ -626,8 +626,9 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 ## Related projects
 
 - [bidirectional-folgezettel for Obsidian](https://github.com/MooersLab/bidirectional-folgezettel)
-- [autoslip-Howm for HOWM package in Emacs](https://github.com/MooersLab/autoslip-howm)
-- 
+- [autoslip-howm for the venerable HOWM knowledge and time management package in Emacs](https://github.com/MooersLab/autoslip-howm)
+
+
 ## Status
 
 The package is actively maintained and used in the author's daily workflow.
