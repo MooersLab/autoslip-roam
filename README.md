@@ -626,7 +626,8 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 ## Related projects
 
 - [bidirectional-folgezettel for Obsidian](https://github.com/MooersLab/bidirectional-folgezettel)
-
+- [autoslip-Howm for HOWM package in Emacs](https://github.com/MooersLab/autoslip-howm)
+- 
 ## Status
 
 The package is actively maintained and used in the author's daily workflow.
@@ -667,6 +668,9 @@ I added a LaTeX preamble drawer to my template for notes to provide a compact fo
 | 2.5.0 | Added `show-chain-of-thought`, `insert-chain-of-thought`, and `show-crosslinked-chains` commands. Expanded the test suite to 100 tests. | 2026-04-23 |
 | 2.4.0 | Added `goto-parent`, `list-children`, `show-tree`, `reparent`, and `reparent-subtree` commands. Added a quiet property-drawer link-storage mode. Expanded the test suite to 86 tests. | 2026-04-22 |
 | 0.1 | Initial commit. Extensive edits of the README.md. | 2026-01-31 |
+
+## Related repositories
+
 
 ## Funding
 - NIH: R01 CA242845, R01 AI088011
