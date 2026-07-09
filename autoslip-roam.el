@@ -1754,9 +1754,13 @@ so it points at the new parent node (if any).  Returns the new file path."
                                  new-parent-addr))))
           (when new-parent
             (autoslip-roam--insert-backlink new-parent))))
+      ;; Persist the title/backlink edits BEFORE renaming: the rename helper
+      ;; clears the buffer-modified flag (via set-visited-file-name +
+      ;; set-buffer-modified-p nil), so a save-buffer placed after it is a
+      ;; no-op and the new title never reaches disk.
+      (save-buffer)
       (when new-file
         (autoslip-roam--rename-visited-file-to new-file))
-      (save-buffer)
       (org-roam-db-update-file (buffer-file-name)))
     (or new-file file)))
 
