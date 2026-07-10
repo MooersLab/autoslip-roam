@@ -110,6 +110,45 @@
   (should (equal nil (autoslip-roam--parse-address "abc"))))
 
 ;;; ============================================================================
+;;; Unit Tests: autoslip-roam--ancestor-p
+;;; ============================================================================
+
+(ert-deftest test-ancestor-p-siblings-are-not-descendants ()
+  "A digit prefix does not make one address the ancestor of another.
+
+\"1.14\" begins with the string \"1.1\", but both are children of the root
+\"1.\".  A `string-prefix-p' test here made `autoslip-roam-reparent-subtree'
+drag whole sibling subtrees along with a move."
+  (should-not (autoslip-roam--ancestor-p "1.1" "1.14"))
+  (should-not (autoslip-roam--ancestor-p "1.1" "1.10"))
+  (should-not (autoslip-roam--ancestor-p "1.1" "1.14a"))
+  (should-not (autoslip-roam--ancestor-p "1.2" "1.26"))
+  (should-not (autoslip-roam--ancestor-p "7.4" "7.40"))
+  ;; A letter-suffixed sibling is likewise not a descendant.
+  (should-not (autoslip-roam--ancestor-p "1.2a" "1.2ab5")))
+
+(ert-deftest test-ancestor-p-true-descendants ()
+  "Every address on the parent chain is an ancestor."
+  (should (autoslip-roam--ancestor-p "1.1" "1.1a"))
+  (should (autoslip-roam--ancestor-p "1.1" "1.1a3"))
+  (should (autoslip-roam--ancestor-p "1.1" "1.1a3b"))
+  (should (autoslip-roam--ancestor-p "1.1a" "1.1a3b"))
+  (should (autoslip-roam--ancestor-p "7.4" "7.4a"))
+  ;; Roots own their whole subtree, in canonical and legacy bare form.
+  (should (autoslip-roam--ancestor-p "1." "1.14"))
+  (should (autoslip-roam--ancestor-p "1." "1.14a2"))
+  (should (autoslip-roam--ancestor-p "1" "1.14")))
+
+(ert-deftest test-ancestor-p-is-proper-and-total ()
+  "An address is not its own ancestor, and junk input yields nil."
+  (should-not (autoslip-roam--ancestor-p "1.1" "1.1"))
+  (should-not (autoslip-roam--ancestor-p "1." "1."))
+  (should-not (autoslip-roam--ancestor-p "2." "1.14"))
+  (should-not (autoslip-roam--ancestor-p nil "1.1a"))
+  (should-not (autoslip-roam--ancestor-p "1.1" nil))
+  (should-not (autoslip-roam--ancestor-p "1.1" "abc")))
+
+;;; ============================================================================
 ;;; Unit Tests: autoslip-roam--extract-from-title
 ;;; ============================================================================
 
