@@ -255,6 +255,26 @@ Examples:
         nil)
        (t nil)))))
 
+(defun autoslip-roam--ancestor-p (addr fz)
+  "Return non-nil when ADDR is a proper ancestor of FZ.
+
+A string prefix will not answer this question.  \"1.14\" begins with
+\"1.1\", yet the two are siblings: both are children of the root \"1.\".
+Descent is decided by walking FZ up the parent chain that
+`autoslip-roam--parse-address' defines, and asking whether ADDR is on it."
+  (when (and (stringp addr) (stringp fz))
+    (let ((target (autoslip-roam--canonicalize-root addr))
+          (parent (autoslip-roam--parse-address fz)))
+      (catch 'found
+        (while parent
+          (when (string= parent target)
+            (throw 'found t))
+          (let ((next (autoslip-roam--parse-address parent)))
+            ;; Each step must shorten the address.  A malformed address that
+            ;; parsed to itself would otherwise spin here forever.
+            (setq parent (and next (< (length next) (length parent)) next))))
+        nil))))
+
 (defun autoslip-roam--extract-from-title (title)
   "Extract folgezettel pattern from TITLE string.
 Returns the folgezettel if found, nil otherwise.
@@ -1772,8 +1792,7 @@ shallower nodes come before their own descendants."
     (dolist (node (org-roam-node-list))
       (when-let* ((title (org-roam-node-title node))
                   (fz (autoslip-roam--extract-from-title title)))
-        (when (and (string-prefix-p addr fz)
-                   (not (string= fz addr)))
+        (when (autoslip-roam--ancestor-p addr fz)
           (push (cons fz node) pairs))))
     (sort pairs
           (lambda (a b)
