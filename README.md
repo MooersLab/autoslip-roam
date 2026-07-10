@@ -1,5 +1,5 @@
 # Autoslip-Roam
-![Version](https://img.shields.io/static/v1?label=autoslip-roam&message=3.0.0&color=brightcolor)
+![Version](https://img.shields.io/static/v1?label=autoslip-roam&message=3.0.1&color=brightcolor)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Emacs](https://img.shields.io/badge/Emacs-27.1+-blueviolet.svg)](https://www.gnu.org/software/emacs/)
 [![org-roam](https://img.shields.io/badge/org--roam-2.0+-green.svg)](https://www.orgroam.com/)
@@ -626,6 +626,8 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 ## Related projects
 
 - [bidirectional-folgezettel for Obsidian](https://github.com/MooersLab/bidirectional-folgezettel)
+- [autoslip-howm for the venerable HOWM knowledge and time management package in Emacs](https://github.com/MooersLab/autoslip-howm)
+
 
 ## Status
 
@@ -663,10 +665,14 @@ I added a LaTeX preamble drawer to my template for notes to provide a compact fo
 
 | Version | Changes | Date |
 |:--------|:--------|:-----|
+| 3.0.1 | Bug fix and updated tests. | 2026-07-10 |
 | 3.0.0 | Renamed the package from `folgezettel-org-roam` to `autoslip-roam`. Every public symbol, file, buffer name, mode name, and customization group was renamed in step. Users upgrading from 2.x will need to update their `require` form, their customizations, and any key bindings to the new prefix. Root addresses now canonicalize to `N.` with a trailing period (e.g., `1.`) to match numbered-outline conventions like `1. Crystallography`. Legacy bare-integer titles (`1 Crystallography`) are still recognized and treated as equivalent. | 2026-04-23 |
 | 2.5.0 | Added `show-chain-of-thought`, `insert-chain-of-thought`, and `show-crosslinked-chains` commands. Expanded the test suite to 100 tests. | 2026-04-23 |
 | 2.4.0 | Added `goto-parent`, `list-children`, `show-tree`, `reparent`, and `reparent-subtree` commands. Added a quiet property-drawer link-storage mode. Expanded the test suite to 86 tests. | 2026-04-22 |
 | 0.1 | Initial commit. Extensive edits of the README.md. | 2026-01-31 |
+
+## Related repositories
+
 
 ## Funding
 - NIH: R01 CA242845, R01 AI088011
