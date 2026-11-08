@@ -6,70 +6,70 @@
 
 Automatic folgezettel (computer-compatible Luhmann-style) bidirectional link generation for [org-roam](https://www.orgroam.com/).
 This package uses the folgezettel index to determine parent-child relationships and automatically creates directional links based on those relationships.
-The index is placed before the note title and is compatible with the org-roam file-naming system.
-It is also compatible with printing the note for storage in a paper zettelkasten.
-Even though the zettelkasten grows organically as new notes are inserted anywhere in the knowledge graph, the index determines the linear order of the notes for storage in paper form.
+The index appears before the note title and works with the org-roam file-naming system.
+It also supports printing the note for storage in a paper zettelkasten.
+Although the zettelkasten grows organically as new notes are inserted anywhere in the knowledge graph, the index determines the linear order of notes for paper storage.
 
 ## What problems are addressed by this plugin?
 
 ### True automation of bidirectional linking
-Electronic zettelkastens rely on reciprocal hyperlinks to relate parent and child notes. 
-The manual insertion of these links is error-prone and time-consuming. 
-This package provides true automation for creating these links by leveraging the parent-child relationship defined in the indexing system. 
+Electronic zettelkasten rely on reciprocal hyperlinks to relate parent and child notes. 
+Manually inserting these links is error-prone and time-consuming. 
+This package automates link creation by leveraging the parent-child relationship defined in the indexing system. 
 You do not need to click a button to add the links; they are added automatically, out of sight and out of mind.
 
 ### Bridge to a paper-based zettelkasten
 The folgezettel index determines the order in which a new note is to be placed in a series of notes in a paper-based zettelkasten.
-The ability to print these indices with the notes provides a bridge between electronic and paper-based zettelkastens.
+Printing these indicates a bridge between electronic and paper-based zettelkasten.
 This bridge supports hybrid, mirror, and project-based approaches.
-In the project-based approach, notes on paper are used during the assembly of a manuscript, where they are ordered and rearranged on a physical tabletop or corkboard.
+In the project-based approach, you use paper notes while assembling a manuscript, ordering and rearranging them on a physical tabletop or corkboard.
 
 Most electronic zettelkastens rely either on timestamps or a database ID to identify each unique note. 
-This approach is hopeless if one wants to print out their zettels to store them in a paper-based zettelkasten. 
-Fans of the paper-based approach may object to the printed zettels; they claim that you should write these notes by hand to better integrate the information into your memory. 
-This may be true, but more frequent perusal of the paper zettelkasten may be compensatory and possibly more effective in the long term. 
+This approach fails if you want to print your zettels to store them in a paper-based zettelkasten. 
+Fans of the paper-based approach may object to printed zettels; they argue you should write these notes by hand to better integrate the information into your memory. 
+This may be true, but more frequent perusal of the paper zettelkasten may compensate and be more effective in the long term. 
 
-Often, there is not enough time available to rewrite all of the notes by hand.
+Often, there isn't enough time to rewrite all the notes by hand.
 Nor is there time to convert handwritten notes into an electronic format.
 There is no rule against mixing handwritten and printed notes together. 
-Spending time frequently perusing the notes is the main limiting factor to the successful use of  a zettelkasten as a tool for thinking, not the format of the notes.
+Spending time frequently perusing the notes, not the format of the notes, is the main limiting factor to the successful use of  a zettelkasten as a tool for thinking.
 
 
 The inclusion of the folgezettel index in the title indicates where to store the note. 
-Paper-based zettelkastens rely on the folgezettel index (or alternatively the Luhmann-style index or the Scott Scheper index, both of which are not computer-compatible) to specify the linear order of note storage. 
-There is a one-to-one mapping between the zettelkasten graph and the order in which the notes are stored.
+Paper-based zettelkastens rely on the folgezettel index (or alternatively the Luhmann-style index or the Scott Scheper index, neither of which is computer-compatible) to specify the linear order of note storage. 
+A one-to-one mapping exists between the zettelkasten graph and the order in which the notes are stored.
 
 This approach supports a hybrid zettelkasten, with part electronic and part paper-based. 
 Of course, it also supports a mirrored zettelkasten in both paper and electronic form.
 
 You can print a note on US letter-size paper, fold it in half with the title facing outward, and store it in this zettelkasten. 
-This folded paper correspondsroughly to A5-sized paper. 
+This folded paper is roughly A5-sized. 
 Luhmann used the smaller A6-sized paper.
 
-If the note spans multiple pages, as may be the case with a structure, keyword, or hub note, you can fold the pages in half together. 
+If a note spans multiple pages, as may happen with a structure, keyword, or hub note, you can fold the pages in half together. 
 You can also save paper and space by printing double-sided, resulting in a booklet with two pages per side. 
 For example, an eight-page note would span both sides of two sheets of US letter paper. 
 The text will be rotated by 90°, so you will need to write the index across the top of the outside side of the folded paper. 
 
-I favor this approach over the use of index cards because it provides more space and because US Letter printer paper is cheaper and more readily available. 
+I favor this approach over index cards because it provides more space and US Letter printer paper is cheaper and more readily available. 
 This more practical approach reduces the friction of adding new notes to your paper-based zettelkasten.
 
 Obsidian offers a fantastic, infinite canvas for displaying and organizing notes in all kinds of configurations. 
-The ability to print out the notes opens up the opportunity to work with paper versions on a large tabletop or a corkboard. 
-Sometimes, changing the context from electronic to physical can stimulate the mind. 
+The ability to print notes lets you work with paper versions on a large tabletop or corkboard. 
+Sometimes, switching from electronic to physical can stimulate the mind. 
 This alternative physical approach to arranging notes is useful when assembling a manuscript. 
 You can use the canvas to combine all the notes you want to print. 
 This could be useful for one-off tasks, such as assembling a manuscript, where you may discard the paper notes when you are done.
 
 ### Adding some order to the zettelkasten
-Some hierarchical order is necessary to ease navigation of the zettelkasten because keyword searching does not guarantee that you will retrieve all relevant notes. 
-Luhmann's paper version had order provided by his indexing system. 
-Disorder was provided by cross-links between notes. 
+Some hierarchical order is necessary to make the zettelkasten easier to navigate because keyword searching doesn't guarantee you will retrieve all relevant notes. 
+Luhmann's paper version used an indexing system to provide order. 
+Cross-links between notes provided disorder. 
 According to Luhmann, you need both order and disorder. 
 The optimal mix of order and disorder will probably vary with project and user. 
 Luhmann's indexing system started with root nodes numbered with integers, separated by backslashes from the indices of the descendant nodes. 
 
-When starting a zetterlkasten, I recommend spending an hour or more identifying a list of areas of knowledge you want to store notes on in the zettelkasten. 
+When starting a zettelkasten, I recommend spending an hour or more identifying the areas of knowledge you want to store notes on. 
 These areas can serve as your root nodes. 
 You can expand this list as your interests evolve.
 
@@ -641,13 +641,13 @@ Feedback and patches are welcome via the issue tracker.
 ## Additional considerations for existing org-roam users
 
 ## What if you have an existing zettelkasten in org-roam without folgezettel indices?
-If you already have a set of topic nodes, perhaps at one level below a master node, you can use them as the root nodes. You will need to number these. I maintain a file called 00. Index of Indices that contains the list of numbered root nodes.
+If you already have topic nodes, perhaps one level below a master node, you can use them as root nodes. You will need to number these. I maintain a file called 00. Index of Indices that contains the list of numbered root nodes.
 
 If you have a large graph that was developed from the bottom up, you could ask AI agents to identify candidate root nodes. You could then edit and number these and then ask the agents to apply the numbering scheme described above while honoring the existing links.
 
 ## How to export to paper?
 My approach is to export the note to PDF, then print it. 
-I added a LaTeX preamble drawer to my template for notes to provide a compact format to save paper.
+I added a LaTeX preamble drawer to my note template to provide a compact format that saves paper.
 
 ```org-mode
 :PREAMBLE:
@@ -666,7 +666,7 @@ I added a LaTeX preamble drawer to my template for notes to provide a compact fo
 | Version | Changes | Date |
 |:--------|:--------|:-----|
 | 3.0.1 | Bug fix and updated tests. | 2026-07-10 |
-| 3.0.0 | Renamed the package from `folgezettel-org-roam` to `autoslip-roam`. Every public symbol, file, buffer name, mode name, and customization group was renamed in step. Users upgrading from 2.x will need to update their `require` form, their customizations, and any key bindings to the new prefix. Root addresses now canonicalize to `N.` with a trailing period (e.g., `1.`) to match numbered-outline conventions like `1. Crystallography`. Legacy bare-integer titles (`1 Crystallography`) are still recognized and treated as equivalent. | 2026-04-23 |
+| 3.0.0 | Renamed the package from `folgezettel-org-roam` to `autoslip-roam`. This step renamed every public symbol, file, buffer name, mode name, and customization group. Users upgrading from 2.x must update their `require` form, customizations, and any key bindings to the new prefix. Root addresses now canonicalize to `N.` with a trailing period (e.g., `1.`) to match numbered-outline conventions like `1. Crystallography`. Legacy bare-integer titles (`1 Crystallography`) are still recognized and treated as equivalent. | 2026-04-23 |
 | 2.5.0 | Added `show-chain-of-thought`, `insert-chain-of-thought`, and `show-crosslinked-chains` commands. Expanded the test suite to 100 tests. | 2026-04-23 |
 | 2.4.0 | Added `goto-parent`, `list-children`, `show-tree`, `reparent`, and `reparent-subtree` commands. Added a quiet property-drawer link-storage mode. Expanded the test suite to 86 tests. | 2026-04-22 |
 | 0.1 | Initial commit. Extensive edits of the README.md. | 2026-01-31 |
