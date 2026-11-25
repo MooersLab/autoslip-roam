@@ -89,8 +89,9 @@
 (defvar autoslip-roam-nav--children nil
   "Hash table that maps an address to the sorted addresses of its children.
 The key `:top' holds the roots, which are the entries of the first
-screen.  See `autoslip-roam-nav--root-p' for what counts as a root.  The key `:orphans' holds the notes that are not roots and whose
-parent does not exist.")
+screen.  See `autoslip-roam-nav--root-p' for what counts as a root.
+The key `:orphans' holds the notes that are not roots and whose parent
+does not exist.")
 
 (defvar autoslip-roam-nav--current nil
   "Address of the note the menu is showing.

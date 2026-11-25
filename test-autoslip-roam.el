@@ -1300,6 +1300,214 @@ The legacy bare-integer root title (\"1 Root\") canonicalizes to \"1.\"."
         (should (equal (org-roam-node-id node) "new-id"))
         (should (equal (org-roam-node-title node) "1.2a New note"))))))
 
+;;; ============================================================================
+;;; Tests: duplicate guard, link repair, and the index backlink
+;;; ============================================================================
+
+(defun test-autoslip-roam--count (regexp file)
+  "Return the number of matches of REGEXP in FILE."
+  (with-temp-buffer
+    (insert-file-contents file)
+    (how-many regexp (point-min) (point-max))))
+
+(defmacro test-autoslip-roam--with-repair-vault (&rest body)
+  "Run BODY in a small vault on disk with some links missing.
+The parent 1.2 lists the child 1.2a only.  The child 1.2a links back.
+The child 1.2b has no links at all.  The child 1.2c links back, but the
+parent does not list it.  The vault also holds two roots, a numbered
+note that is not a root, and the index of indices."
+  (declare (indent 0))
+  `(test-autoslip-roam--with-temp-dir
+     (let* ((autoslip-roam-link-storage 'headings)
+            (autoslip-roam-sync-db-before-queries nil)
+            (root-file (test-autoslip-roam--create-temp-org-file
+                        "root.org"
+                        ":PROPERTIES:\n:ID:       r1\n:END:\n#+title: 1. Root\n"))
+            (root2-file (test-autoslip-roam--create-temp-org-file
+                         "root2.org"
+                         ":PROPERTIES:\n:ID:       r2\n:END:\n#+title: 2. Second root\n"))
+            (bare-file (test-autoslip-roam--create-temp-org-file
+                        "bare.org"
+                        ":PROPERTIES:\n:ID:       bare\n:END:\n#+title: 001 Not a root\n"))
+            (index-file (test-autoslip-roam--create-temp-org-file
+                         "index.org"
+                         ":PROPERTIES:\n:ID:       idx\n:END:\n#+title: 00.0 Index of indices\n"))
+            (parent-file (test-autoslip-roam--create-temp-org-file
+                          "parent.org"
+                          ":PROPERTIES:\n:ID:       p\n:END:\n#+title: 1.2 Parent\n\n* Parent Note\n[[id:r1][Parent note]]\n\n* Child Notes\n[[id:a][1.2a A]]\n"))
+            (a-file (test-autoslip-roam--create-temp-org-file
+                     "a.org"
+                     ":PROPERTIES:\n:ID:       a\n:END:\n#+title: 1.2a A\n\n* Parent Note\n[[id:p][Parent note]]\n"))
+            (b-file (test-autoslip-roam--create-temp-org-file
+                     "b.org"
+                     ":PROPERTIES:\n:ID:       b\n:END:\n#+title: 1.2b B\n\nBody that mentions [[id:p][the parent]] in passing.\n"))
+            (c-file (test-autoslip-roam--create-temp-org-file
+                     "c.org"
+                     ":PROPERTIES:\n:ID:       c\n:END:\n#+title: 1.2c C\n\n* Parent Note\n[[id:p][Parent note]]\n"))
+            (nodes (list
+                    (test-autoslip-roam--create-mock-node "r1" "1. Root" root-file)
+                    (test-autoslip-roam--create-mock-node "r2" "2. Second root" root2-file)
+                    (test-autoslip-roam--create-mock-node "bare" "001 Not a root" bare-file)
+                    (test-autoslip-roam--create-mock-node "idx" "00.0 Index of indices" index-file)
+                    (test-autoslip-roam--create-mock-node "p" "1.2 Parent" parent-file)
+                    (test-autoslip-roam--create-mock-node "a" "1.2a A" a-file)
+                    (test-autoslip-roam--create-mock-node "b" "1.2b B" b-file)
+                    (test-autoslip-roam--create-mock-node "c" "1.2c C" c-file))))
+       (ignore root2-file bare-file index-file a-file)
+       (unwind-protect
+           (test-autoslip-roam--with-mock-nodes nodes
+             (cl-letf (((symbol-function 'org-roam-db-update-file) #'ignore))
+               ,@body))
+         (dolist (buffer (buffer-list))
+           (when (and (buffer-file-name buffer)
+                      (string-prefix-p test-autoslip-roam--temp-dir
+                                       (buffer-file-name buffer)))
+             (with-current-buffer buffer (set-buffer-modified-p nil))
+             (kill-buffer buffer)))))))
+
+(ert-deftest test-link-under-heading-is-limited-to-the-section ()
+  "A link in another section does not count as a link under the heading."
+  (with-temp-buffer
+    (insert "#+title: 1.2b B\n\n* Parent Note\n[[id:p][Parent note]]\n\n"
+            "* Notes\n[[id:q][Other]]\n")
+    (should (autoslip-roam--link-under-heading-p "p" "Parent Note"))
+    (should-not (autoslip-roam--link-under-heading-p "q" "Parent Note"))
+    (should (autoslip-roam--link-under-heading-p "q" "Notes"))
+    (should-not (autoslip-roam--link-under-heading-p "p" "Child Notes"))
+    (should (autoslip-roam--link-under-heading-p "q" nil))))
+
+(ert-deftest test-insert-backlink-leaves-existing-link-alone ()
+  "Inserting the same parent link twice gives one link."
+  (let ((autoslip-roam-link-storage 'headings)
+        (parent (test-autoslip-roam--create-mock-node "p" "1.2 Parent" "/tmp/p.org")))
+    (with-temp-buffer
+      (insert "#+title: 1.2b B\n")
+      (autoslip-roam--insert-backlink parent)
+      (autoslip-roam--insert-backlink parent)
+      (should (= (how-many "\\[\\[id:p\\]" (point-min) (point-max)) 1))
+      (should (= (how-many "^\\* Parent Note" (point-min) (point-max)) 1)))))
+
+(ert-deftest test-insert-forward-link-leaves-existing-link-alone ()
+  "Inserting the same child link twice gives one link."
+  (test-autoslip-roam--with-repair-vault
+    (let ((child (test-autoslip-roam--create-mock-node "a" "1.2a A" a-file)))
+      (autoslip-roam--insert-forward-link child parent-file)
+      (autoslip-roam--insert-forward-link child parent-file)
+      (should (= (test-autoslip-roam--count "\\[\\[id:a\\]" parent-file) 1)))))
+
+(ert-deftest test-find-missing-links ()
+  "The scan reports the notes with a missing link, in address order."
+  (test-autoslip-roam--with-repair-vault
+    (let ((missing (autoslip-roam--find-missing-links)))
+      (should (equal (mapcar (lambda (item)
+                               (list (org-roam-node-id (plist-get item :child))
+                                     (plist-get item :backlink)
+                                     (plist-get item :forward)))
+                             missing)
+                     ;; The root links 1.2 as a child nowhere, so 1.2 is
+                     ;; reported too.  A link in the body of 1.2b does not
+                     ;; count as its parent link.
+                     '(("p" nil t) ("b" t t) ("c" nil t)))))))
+
+(ert-deftest test-repair-links-adds-each-missing-link-once ()
+  "The repair adds the missing links and a second run adds nothing."
+  (test-autoslip-roam--with-repair-vault
+    (should (= (autoslip-roam-repair-links nil t) 4))
+    (should (= (test-autoslip-roam--count "\\[\\[id:p\\]\\[Parent note\\]\\]" b-file) 1))
+    (should (= (test-autoslip-roam--count "\\[\\[id:a\\]" parent-file) 1))
+    (should (= (test-autoslip-roam--count "\\[\\[id:b\\]" parent-file) 1))
+    (should (= (test-autoslip-roam--count "\\[\\[id:c\\]" parent-file) 1))
+    (should (= (test-autoslip-roam--count "\\[\\[id:p\\]" root-file) 1))
+    (should (= (test-autoslip-roam--count "\\[\\[id:p\\]" c-file) 1))
+    (should-not (autoslip-roam--find-missing-links))
+    (should (= (autoslip-roam-repair-links nil t) 0))
+    ;; Files that the repair opened are closed again.
+    (should-not (find-buffer-visiting b-file))))
+
+(ert-deftest test-repair-links-report-only-changes-nothing ()
+  "With REPORT-ONLY the files are left as they were."
+  (test-autoslip-roam--with-repair-vault
+    (let ((before (with-temp-buffer (insert-file-contents parent-file)
+                                    (buffer-string))))
+      (cl-letf (((symbol-function 'display-buffer) #'ignore))
+        (should (= (length (autoslip-roam-repair-links t)) 3)))
+      (should (equal before (with-temp-buffer (insert-file-contents parent-file)
+                                              (buffer-string))))
+      (with-current-buffer "*Autoslip Repair*"
+        (should (string-match-p "^BF  1\\.2b B" (buffer-string)))
+        (should (string-match-p "^-F  1\\.2c C" (buffer-string)))))))
+
+(ert-deftest test-repair-links-asks-before-changing ()
+  "Answering no to the question leaves the vault unchanged."
+  (test-autoslip-roam--with-repair-vault
+    (cl-letf (((symbol-function 'display-buffer) #'ignore)
+              ((symbol-function 'y-or-n-p) (lambda (&rest _) nil)))
+      (should (= (autoslip-roam-repair-links) 0))
+      (should (= (length (autoslip-roam--find-missing-links)) 3)))))
+
+(ert-deftest test-root-title-p ()
+  "Only titles that begin with an integer and a period are root titles."
+  (should (autoslip-roam--root-title-p "1. Root"))
+  (should (autoslip-roam--root-title-p "20. Bionanotechnology"))
+  (should-not (autoslip-roam--root-title-p "001 Not a root"))
+  (should-not (autoslip-roam--root-title-p "Untitled 3"))
+  (should-not (autoslip-roam--root-title-p "1.2 Parent"))
+  (should-not (autoslip-roam--root-title-p "00.0 Index of indices"))
+  (should-not (autoslip-roam--root-title-p nil)))
+
+(ert-deftest test-add-backlink-to-index-for-current-root ()
+  "The current root gets one link to the index of indices."
+  (test-autoslip-roam--with-repair-vault
+    (cl-letf (((symbol-function 'org-roam-node-at-point)
+               (lambda (&rest _) (car nodes))))
+      (should (= (autoslip-roam-add-backlink-from-root-to-00-index) 1))
+      (should (= (test-autoslip-roam--count
+                  "^\\[\\[id:idx\\]\\[00\\.0 Index of indices\\]\\]$" root-file)
+                 1))
+      (should (= (test-autoslip-roam--count "^\\* Parent Note" root-file) 1))
+      (should (= (autoslip-roam-add-backlink-from-root-to-00-index) 0))
+      (should (= (test-autoslip-roam--count "\\[\\[id:idx\\]" root-file) 1)))))
+
+(ert-deftest test-add-backlink-to-index-refuses-a-note-that-is-not-a-root ()
+  "A note that is not a root signals a `user-error'."
+  (test-autoslip-roam--with-repair-vault
+    (cl-letf (((symbol-function 'org-roam-node-at-point)
+               (lambda (&rest _) (nth 4 nodes))))
+      (should-error (autoslip-roam-add-backlink-from-root-to-00-index) :type 'user-error))
+    (cl-letf (((symbol-function 'org-roam-node-at-point)
+               (lambda (&rest _) (nth 2 nodes))))
+      (should-error (autoslip-roam-add-backlink-from-root-to-00-index) :type 'user-error))))
+
+(ert-deftest test-add-backlink-to-index-for-all-roots ()
+  "With ALL-ROOTS every root is linked and other notes are left alone."
+  (test-autoslip-roam--with-repair-vault
+    (should (= (autoslip-roam-add-backlink-from-root-to-00-index t) 2))
+    (should (= (test-autoslip-roam--count "\\[\\[id:idx\\]" root-file) 1))
+    (should (= (test-autoslip-roam--count "\\[\\[id:idx\\]" root2-file) 1))
+    (should (= (test-autoslip-roam--count "\\[\\[id:idx\\]" bare-file) 0))
+    (should (= (test-autoslip-roam--count "\\[\\[id:idx\\]" parent-file) 0))
+    (should (= (test-autoslip-roam--count "\\[\\[id:idx\\]" index-file) 0))
+    (should (= (autoslip-roam-add-backlink-from-root-to-00-index t) 0))))
+
+(ert-deftest test-add-backlink-to-index-needs-the-index-note ()
+  "A missing index note signals a `user-error'."
+  (test-autoslip-roam--with-repair-vault
+    (let ((autoslip-roam-index-address "99.9"))
+      (should-error (autoslip-roam-add-backlink-from-root-to-00-index t)
+                    :type 'user-error))))
+
+(ert-deftest test-repair-links-in-properties-mode ()
+  "The repair follows the property-drawer storage mode."
+  (test-autoslip-roam--with-repair-vault
+    (let ((autoslip-roam-link-storage 'properties))
+      ;; No note has the properties yet, so every pair is incomplete.
+      (should (= (length (autoslip-roam--find-missing-links)) 4))
+      (should (= (autoslip-roam-repair-links nil t) 8))
+      (should-not (autoslip-roam--find-missing-links))
+      (should (= (test-autoslip-roam--count "^:FZ_PARENT: p$" b-file) 1))
+      (should (= (test-autoslip-roam--count "^:FZ_CHILDREN: a,b,c$" parent-file)
+                 1)))))
+
 (provide 'test-autoslip-roam)
 
 ;;; test-autoslip-roam.el ends here

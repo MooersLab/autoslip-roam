@@ -185,6 +185,14 @@ basename does not contain the old folgezettel."
   :type 'boolean
   :group 'autoslip-roam)
 
+(defcustom autoslip-roam-index-address "00.0"
+  "Folgezettel address of the note that indexes the root notes.
+`autoslip-roam-add-backlink-from-root-to-00-index' links a root note back to the
+note whose title carries this address, for example
+\"00.0 Index of indices\"."
+  :type 'string
+  :group 'autoslip-roam)
+
 (defvar autoslip-roam--pending-parent-node nil
   "Stores the parent node when creating a child note via
 `autoslip-roam-create-child' or `autoslip-roam-insert-next-child'.
@@ -418,11 +426,34 @@ Shows a warning popup if the address is already in use."
                 (le (1+ (line-end-position))))
             (delete-region lb le)))))))
 
+(defun autoslip-roam--link-under-heading-p (id heading)
+  "Return non-nil when the current buffer links to ID under HEADING.
+The section of HEADING runs to the next heading of any level.  When
+HEADING is nil, the whole buffer is searched."
+  (let ((link (concat "\\[\\[id:" (regexp-quote id) "\\]")))
+    (save-excursion
+      (save-restriction
+        (widen)
+        (goto-char (point-min))
+        (if (null heading)
+            (re-search-forward link nil t)
+          (when (re-search-forward
+                 (concat "^\\*+ " (regexp-quote heading)) nil t)
+            (let ((end (save-excursion
+                         (forward-line 1)
+                         (if (re-search-forward "^\\*+ " nil t)
+                             (match-beginning 0)
+                           (point-max)))))
+              (re-search-forward link end t))))))))
+
 (defun autoslip-roam--insert-backlink-headings (parent-node)
-  "Insert a visible-heading parent backlink to PARENT-NODE in the current buffer."
+  "Insert a visible-heading parent backlink to PARENT-NODE in the current buffer.
+Do nothing when the link is already there."
   (let* ((parent-id (org-roam-node-id parent-node))
          (parent-title (org-roam-node-title parent-node))
          (description (or autoslip-roam-parent-link-description parent-title)))
+   (unless (autoslip-roam--link-under-heading-p
+            parent-id autoslip-roam-backlink-heading)
     (save-excursion
       (goto-char (point-min))
       ;; Skip past file-level properties
@@ -450,7 +481,7 @@ Shows a warning popup if the address is already in use."
       ;; Insert the backlink - use description only if non-empty
       (if (and description (not (string-empty-p description)))
           (insert (format "[[id:%s][%s]]\n" parent-id description))
-        (insert (format "[[id:%s]]\n" parent-id))))))
+        (insert (format "[[id:%s]]\n" parent-id)))))))
 
 (defun autoslip-roam--insert-backlink-properties (parent-node)
   "Record the parent link to PARENT-NODE in the top-level property drawer."
@@ -467,11 +498,14 @@ Dispatches on `autoslip-roam-link-storage'."
     (_           (autoslip-roam--insert-backlink-headings parent-node))))
 
 (defun autoslip-roam--insert-forward-link-headings (child-node parent-file)
-  "Append a Child Notes heading entry for CHILD-NODE into PARENT-FILE."
+  "Append a Child Notes heading entry for CHILD-NODE into PARENT-FILE.
+Do nothing when the link is already there."
   (let* ((child-id (org-roam-node-id child-node))
          (child-title (org-roam-node-title child-node))
          (link-desc (or autoslip-roam-child-link-description child-title)))
     (with-current-buffer (find-file-noselect parent-file)
+     (unless (autoslip-roam--link-under-heading-p
+              child-id autoslip-roam-forward-link-heading)
       (save-excursion
         (goto-char (point-max))
 
@@ -499,7 +533,7 @@ Dispatches on `autoslip-roam-link-storage'."
           (insert (format "[[id:%s]]\n" child-id))))
       (save-buffer)
       ;; Update org-roam database for this file
-      (org-roam-db-update-file parent-file))))
+      (org-roam-db-update-file parent-file)))))
 
 (defun autoslip-roam--insert-forward-link-properties (child-node parent-file)
   "Append CHILD-NODE's id to the children property in PARENT-FILE."
@@ -657,6 +691,274 @@ Useful for existing notes or when automatic insertion fails."
                                (org-roam-node-title parent-node)))))))))))))
 
 ;;; Validation Functions
+
+;;; ============================================================================
+;;; Repairing missing links
+;;; ============================================================================
+
+(defun autoslip-roam--file-has-backlink-p (parent-id)
+  "Return non-nil when the current buffer records PARENT-ID as its parent.
+The check follows `autoslip-roam-link-storage'."
+  (pcase autoslip-roam-link-storage
+    ('properties
+     (equal (autoslip-roam--get-top-property autoslip-roam-parent-property)
+            parent-id))
+    (_ (autoslip-roam--link-under-heading-p
+        parent-id autoslip-roam-backlink-heading))))
+
+(defun autoslip-roam--file-has-forward-link-p (child-id)
+  "Return non-nil when the current buffer records CHILD-ID as a child.
+The check follows `autoslip-roam-link-storage'."
+  (pcase autoslip-roam-link-storage
+    ('properties
+     (and (member child-id (autoslip-roam--children-property-ids)) t))
+    (_ (autoslip-roam--link-under-heading-p
+        child-id autoslip-roam-forward-link-heading))))
+
+(defmacro autoslip-roam--with-file-text (file &rest body)
+  "Run BODY in a buffer that holds the text of FILE.
+The buffer that visits FILE is used when there is one, so that unsaved
+changes are seen.  Otherwise the text is read into a temporary buffer."
+  (declare (indent 1))
+  (let ((buffer (make-symbol "buffer")))
+    `(let ((,buffer (find-buffer-visiting ,file)))
+       (if ,buffer
+           (with-current-buffer ,buffer ,@body)
+         (with-temp-buffer
+           (insert-file-contents ,file)
+           ,@body)))))
+
+(defmacro autoslip-roam--editing-file (file &rest body)
+  "Run BODY, then close FILE when BODY was what opened it."
+  (declare (indent 1))
+  (let ((was-open (make-symbol "was-open"))
+        (buffer (make-symbol "buffer")))
+    `(let ((,was-open (find-buffer-visiting ,file)))
+       (prog1 (progn ,@body)
+         (unless ,was-open
+           (let ((,buffer (find-buffer-visiting ,file)))
+             (when (and ,buffer (not (buffer-modified-p ,buffer)))
+               (kill-buffer ,buffer))))))))
+
+(defun autoslip-roam--address-table ()
+  "Return a hash table that maps each folgezettel address to its node.
+When an address is found in two titles, the title that begins with the
+address wins.  Otherwise the first note wins."
+  (let ((table (make-hash-table :test #'equal)))
+    (dolist (node (org-roam-node-list))
+      (when-let* ((title (org-roam-node-title node))
+                  (address (autoslip-roam--extract-from-title title)))
+        (let ((existing (gethash address table)))
+          (when (or (null existing)
+                    (and (string-prefix-p address (string-trim-left title))
+                         (not (string-prefix-p
+                               address
+                               (string-trim-left
+                                (org-roam-node-title existing))))))
+            (puthash address node table)))))
+    table))
+
+(defun autoslip-roam--find-missing-links ()
+  "Return the parent and child links that are missing in the vault.
+Each element is a plist with the keys :child, :parent, :backlink, and
+:forward.  :child and :parent are nodes.  :backlink is non-nil when the
+child lacks its link to the parent.  :forward is non-nil when the
+parent lacks its link to the child.  Notes whose parent does not exist
+are not listed, because there is nothing to link them to."
+  (let ((table (autoslip-roam--address-table))
+        missing)
+    (maphash
+     (lambda (address child)
+       (when-let* ((parent-address (autoslip-roam--parse-address address))
+                   (parent (gethash parent-address table))
+                   (child-file (org-roam-node-file child))
+                   (parent-file (org-roam-node-file parent))
+                   (child-id (org-roam-node-id child))
+                   (parent-id (org-roam-node-id parent)))
+         (when (and (file-readable-p child-file)
+                    (file-readable-p parent-file))
+           (let ((backlink (not (autoslip-roam--with-file-text child-file
+                                  (autoslip-roam--file-has-backlink-p
+                                   parent-id))))
+                 (forward (not (autoslip-roam--with-file-text parent-file
+                                 (autoslip-roam--file-has-forward-link-p
+                                  child-id)))))
+             (when (or backlink forward)
+               (push (list :child child :parent parent
+                           :backlink backlink :forward forward)
+                     missing))))))
+     table)
+    (sort missing
+          (lambda (a b)
+            (autoslip-roam--compare-addresses
+             (autoslip-roam--extract-from-title
+              (org-roam-node-title (plist-get a :child)))
+             (autoslip-roam--extract-from-title
+              (org-roam-node-title (plist-get b :child))))))))
+
+(defun autoslip-roam--repair-one (item)
+  "Add the links that ITEM says are missing.
+ITEM is an element of the list from `autoslip-roam--find-missing-links'.
+Return the number of links added."
+  (let* ((child (plist-get item :child))
+         (parent (plist-get item :parent))
+         (child-file (org-roam-node-file child))
+         (parent-file (org-roam-node-file parent))
+         (added 0))
+    (when (plist-get item :backlink)
+      (autoslip-roam--editing-file child-file
+        (with-current-buffer (find-file-noselect child-file)
+          (autoslip-roam--insert-backlink parent)
+          (save-buffer))
+        (org-roam-db-update-file child-file))
+      (setq added (1+ added)))
+    (when (plist-get item :forward)
+      (autoslip-roam--editing-file parent-file
+        (autoslip-roam--insert-forward-link child parent-file))
+      (setq added (1+ added)))
+    added))
+
+(defun autoslip-roam--repair-report (missing)
+  "Show MISSING, a list of missing links, in a buffer and return the buffer."
+  (let ((buffer (get-buffer-create "*Autoslip Repair*")))
+    (with-current-buffer buffer
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (insert (format "Autoslip link repair: %d notes with a missing link\n"
+                        (length missing))
+                (make-string 60 ?=) "\n"
+                "B: the note lacks its link to the parent.\n"
+                "F: the parent lacks its link to the note.\n\n")
+        (dolist (item missing)
+          (insert (format "%s%s  %s\n      parent: %s\n"
+                          (if (plist-get item :backlink) "B" "-")
+                          (if (plist-get item :forward) "F" "-")
+                          (org-roam-node-title (plist-get item :child))
+                          (org-roam-node-title (plist-get item :parent))))))
+      (goto-char (point-min))
+      (special-mode))
+    buffer))
+
+;;;###autoload
+(defun autoslip-roam-repair-links (&optional report-only no-confirm)
+  "Find and add the parent and child links that are missing in the vault.
+Every note with a folgezettel address is compared with its parent note.
+A link that is already there is left alone, so the command is safe to
+run more than once.
+
+With REPORT-ONLY, a prefix argument when called interactively, list the
+missing links in a buffer and change nothing.  Otherwise list them, ask
+for confirmation, and add them.  A non-nil NO-CONFIRM skips the question
+when the function is called from Lisp.
+
+Return the number of links added, or the list of missing links with
+REPORT-ONLY."
+  (interactive "P")
+  (autoslip-roam--maybe-sync-db)
+  (let* ((missing (autoslip-roam--find-missing-links))
+         (links (apply #'+ (mapcar (lambda (item)
+                                     (+ (if (plist-get item :backlink) 1 0)
+                                        (if (plist-get item :forward) 1 0)))
+                                   missing))))
+    (cond
+     ((null missing)
+      (message "No missing parent or child links were found.")
+      (if report-only nil 0))
+     (report-only
+      (display-buffer (autoslip-roam--repair-report missing))
+      (message "%d links are missing in %d notes.  Nothing was changed."
+               links (length missing))
+      missing)
+     ((or no-confirm
+          (progn
+            (display-buffer (autoslip-roam--repair-report missing))
+            (y-or-n-p (format "Add %d missing links for %d notes? "
+                              links (length missing)))))
+      (let ((added 0))
+        (dolist (item missing)
+          (setq added (+ added (autoslip-roam--repair-one item))))
+        (message "Added %d links for %d notes." added (length missing))
+        added))
+     (t
+      (message "Nothing was changed.")
+      0))))
+
+;;; ============================================================================
+;;; Linking root notes to the index of indices
+;;; ============================================================================
+
+(defun autoslip-roam--root-title-p (title)
+  "Return non-nil when TITLE is the title of a root note.
+A root title begins with an integer and a period, as in \"1. Topic\"."
+  (when-let* ((address (and title (autoslip-roam--extract-from-title title))))
+    (and (autoslip-roam--root-address-p address)
+         (string-prefix-p address (string-trim-left title)))))
+
+(defun autoslip-roam--index-node ()
+  "Return the note with the address `autoslip-roam-index-address', or nil."
+  (gethash autoslip-roam-index-address (autoslip-roam--address-table)))
+
+(defun autoslip-roam--add-index-backlink (root-node index-node)
+  "Link ROOT-NODE back to INDEX-NODE.  Return non-nil when a link was added.
+The link is stored the way a parent link is stored, and it is shown with
+the title of the index note.  Nothing is changed when the link is there."
+  (let ((file (org-roam-node-file root-node))
+        (index-id (org-roam-node-id index-node)))
+    (unless (autoslip-roam--with-file-text file
+              (autoslip-roam--file-has-backlink-p index-id))
+      (autoslip-roam--editing-file file
+        (with-current-buffer (find-file-noselect file)
+          (let ((autoslip-roam-parent-link-description nil))
+            (autoslip-roam--insert-backlink index-node))
+          (save-buffer))
+        (org-roam-db-update-file file))
+      t)))
+
+;;;###autoload
+(defun autoslip-roam-add-backlink-from-root-to-00-index (&optional all-roots)
+  "Link the current root note back to the index of indices.
+The index of indices is the note whose title carries the address in
+`autoslip-roam-index-address', \"00.0\" by default.  The link is put
+where a parent link goes, because a root note has no parent of its own.
+A link that is already there is left alone.
+
+With ALL-ROOTS, a prefix argument when called interactively, do this for
+every root note in the vault.
+
+Return the number of links added."
+  (interactive "P")
+  (autoslip-roam--maybe-sync-db)
+  (let ((index (autoslip-roam--index-node)))
+    (unless index
+      (user-error "No note with the address %s was found.  %s"
+                  autoslip-roam-index-address
+                  "See `autoslip-roam-index-address'"))
+    (if all-roots
+        (let ((added 0)
+              (roots 0))
+          (dolist (node (org-roam-node-list))
+            (when (and (autoslip-roam--root-title-p (org-roam-node-title node))
+                       (org-roam-node-file node)
+                       (file-readable-p (org-roam-node-file node)))
+              (setq roots (1+ roots))
+              (when (autoslip-roam--add-index-backlink node index)
+                (setq added (1+ added)))))
+          (message "Added the link to \"%s\" in %d of %d root notes."
+                   (org-roam-node-title index) added roots)
+          added)
+      (let* ((node (org-roam-node-at-point))
+             (title (and node (org-roam-node-title node))))
+        (cond
+         ((not (autoslip-roam--root-title-p title))
+          (user-error "This note is not a root note: %s"
+                      (or title "(no org-roam note at point)")))
+         ((autoslip-roam--add-index-backlink node index)
+          (message "Added the link to \"%s\"." (org-roam-node-title index))
+          1)
+         (t
+          (message "The link to \"%s\" is already there."
+                   (org-roam-node-title index))
+          0))))))
 
 (defun autoslip-roam--validate-no-multiple-periods (address)
   "Check that ADDRESS contains at most one period (after the root number).

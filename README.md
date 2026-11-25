@@ -368,6 +368,8 @@ and the reparent commands.
 | `autoslip-roam-mode` | Toggle the minor mode |
 | `autoslip-roam-insert-next-child` | Create a new child note |
 | `autoslip-roam-add-backlink-to-parent` | Add bidirectional links manually |
+| `autoslip-roam-repair-links` | Find and add every missing parent or child link in the vault. With `C-u`, report only |
+| `autoslip-roam-add-backlink-from-root-to-00-index` | Link the current root note back to the index of indices (`00.0`). With `C-u`, do this for every root note |
 | `autoslip-roam-report-validation-errors` | Validate an address |
 | `autoslip-roam-diagnose-address` | Debug address lookup |
 | `autoslip-roam-check-duplicate-index` | Check for duplicates |
