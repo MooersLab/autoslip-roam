@@ -104,7 +104,7 @@ BATCH_FLAGS = --batch --no-init-file $(LOAD_PATH)
 # Targets
 # ==============================================================================
 
-.PHONY: all test test-batch test-nav test-unit test-integration test-edge test-regression \
+.PHONY: all test test-batch test-nav test-html test-unit test-integration test-edge test-regression \
         test-perf test-verbose test-specific test-quick test-interactive \
         check-deps compile compile-tests compile-all lint checkdoc check \
         info install install-info install-lisp install-user install-info-user \
@@ -213,6 +213,13 @@ test-nav: ## Run the tests of the transient navigation menu
 	$(EMACS) $(BATCH_FLAGS) \
 		-l ert \
 		-l test-autoslip-roam-nav.el \
+		-f ert-run-tests-batch-and-exit
+
+test-html: ## Run the tests of the browser dashboard
+	@echo "Running dashboard tests..."
+	$(EMACS) $(BATCH_FLAGS) \
+		-l ert \
+		-l test-autoslip-roam-html.el \
 		-f ert-run-tests-batch-and-exit
 
 test-quick: ## Run quick test suite (parsing and validation)
