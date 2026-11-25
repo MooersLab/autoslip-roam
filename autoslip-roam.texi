@@ -7,7 +7,7 @@
 @c %**end of header
 
 @copying
-This manual is for Autoslip Roam (version 3.0.0).
+This manual is for Autoslip Roam (version 3.1.0).
 
 Copyright @copyright{} 2025 Blaine Mooers.
 
@@ -27,7 +27,7 @@ Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts.
 @titlepage
 @title Autoslip Roam Manual
 @subtitle Automatic Folgezettel Backlink Generation for Org-Roam
-@subtitle Version 3.0.0
+@subtitle Version 3.1.0
 @author Blaine Mooers
 @page
 @vskip 0pt plus 1filll
@@ -55,6 +55,9 @@ automatic bidirectional link generation for org-roam notes using folgezettel
 * Usage::                       How to use the package.
 * Customization::               Configuring the package.
 * Commands::                    Interactive commands reference.
+* Navigation Menu::             Walking the hierarchy in a transient menu.
+* Browser Dashboard::           The hierarchy as one HTML page.
+* Repairing Links::             Adding links that are missing.
 * Testing::                     Running the test suite.
 * Troubleshooting::             Common issues and solutions.
 * Index::                       Concept and function index.
@@ -123,6 +126,17 @@ Cross-linked chain-of-thought command that shows the folgezettel
 context of every note linked under Cross References
 @item
 Optional property-drawer link-storage mode for a quieter note body
+@item
+Transient menu that shows the chain of thought, the neighboring notes,
+and the children of the current note at once
+@item
+Browser dashboard that writes the whole hierarchy to one HTML page
+@item
+Repair command that adds every missing parent or child link in the vault
+@item
+Command that links a root note back to the index of indices
+@item
+Lisp entry point for creating a child note from other packages
 @end itemize
 
 @c ============================================================================
@@ -350,6 +364,36 @@ For existing notes without links:
 M-x autoslip-roam-add-backlink-to-parent
 @end example
 
+A link that is already there is left alone, so the command is safe to
+run twice.  To repair the whole vault in one step, @pxref{Repairing Links}.
+
+@section Creating Child Notes from Lisp
+
+@findex autoslip-roam-create-child
+@cindex Lisp entry point
+Other packages can create a child note without prompts:
+
+@lisp
+(autoslip-roam-create-child parent-node "Title" address immediate)
+@end lisp
+
+@defun autoslip-roam-create-child parent-node title &optional address immediate templates
+Create a child note of @var{parent-node} with @var{title} and link the two
+notes.  @var{parent-node} is an org-roam node whose title carries a
+folgezettel address.  When @var{address} is nil, the next free address is
+used.  When @var{immediate} is non-nil, the capture is finished without
+showing its buffer, the first template in @var{templates} is used, and the
+new node is returned.  @var{templates} defaults to
+@code{org-roam-capture-templates}.
+
+The function signals a @code{user-error} when the parent has no address,
+when @var{address} is not a valid child of the parent, or when
+@var{address} is already in use.
+@end defun
+
+The companion package autoslip-noter uses this function to file org-noter
+notes on PDF files in the zettelkasten.
+
 @section Cross-Reference Links
 
 @cindex cross-references
@@ -408,6 +452,47 @@ Default: @code{t}.
 @defopt autoslip-roam-sync-db-before-queries
 Sync org-roam database before queries.  Default: @code{t}.
 Recommended for reliability.
+@end defopt
+
+@defopt autoslip-roam-index-address
+Folgezettel address of the note that indexes the root notes.
+Default: @code{"00.0"}.  Used by
+@code{autoslip-roam-add-backlink-from-root-to-00-index}.
+@end defopt
+
+@section Navigation Menu Options
+
+These options are defined in @file{autoslip-roam-nav.el}.
+
+@defopt autoslip-roam-nav-page-size
+Maximum number of children shown on one page of the menu.
+Default: @code{30}.
+@end defopt
+
+@defopt autoslip-roam-nav-title-width
+Maximum number of characters shown of a note title in the menu.
+Default: @code{70}.
+@end defopt
+
+@section Browser Dashboard Options
+
+These options are defined in @file{autoslip-roam-html.el}.
+
+@defopt autoslip-roam-html-file
+File that the dashboard is written to.  Default:
+@file{autoslip-roam-index.html} in the user Emacs directory.
+@end defopt
+
+@defopt autoslip-roam-html-title
+Title shown at the top of the dashboard.  Default:
+@code{"Autoslip index"}.
+@end defopt
+
+@defopt autoslip-roam-html-link-type
+How a note in the dashboard links back to the note itself.  With
+@code{org-protocol}, the default, a click opens the note in Emacs.  With
+@code{file}, the link points to the Org file.  With @code{nil}, the notes
+are not links.
 @end defopt
 
 @section Link Storage
@@ -487,6 +572,16 @@ Manually add bidirectional links between the current note and its parent.
 Useful for existing notes or when automatic linking fails.
 @end deffn
 
+@deffn Command autoslip-roam-repair-links
+Find and add the parent and child links that are missing in the vault.
+With a prefix argument, report only.  @xref{Repairing Links}.
+@end deffn
+
+@deffn Command autoslip-roam-add-backlink-from-root-to-00-index
+Link the current root note back to the index of indices.  With a prefix
+argument, do this for every root note.  @xref{Repairing Links}.
+@end deffn
+
 @deffn Command autoslip-roam-report-validation-errors address
 Interactively validate an address and display any errors.
 @end deffn
@@ -519,6 +614,22 @@ folgezettel-addressed node in the vault, sorted in canonical folgezettel
 order and indented by depth.  In that buffer, @kbd{RET} visits the node on
 the current line, @kbd{n} and @kbd{p} move between lines, @kbd{g} refreshes
 the view, and @kbd{q} buries the buffer.
+@end deffn
+
+@deffn Command autoslip-roam-nav
+Walk the hierarchy in a transient menu.  With a prefix argument, start at
+the root notes.  Defined in @file{autoslip-roam-nav.el}.
+@xref{Navigation Menu}.
+@end deffn
+
+@deffn Command autoslip-roam-html-open
+Write the browser dashboard and open it in the web browser.  Defined in
+@file{autoslip-roam-html.el}.  @xref{Browser Dashboard}.
+@end deffn
+
+@deffn Command autoslip-roam-html-export
+Write the browser dashboard without opening it.  With a prefix argument,
+ask for the file.
 @end deffn
 
 @section Chain-of-Thought Commands
@@ -581,7 +692,233 @@ unrelated notes and aborts without making changes if any are found.
   (define-key org-mode-map (kbd "C-c n x") #'autoslip-roam-show-crosslinked-chains)
   (define-key org-mode-map (kbd "C-c n r") #'autoslip-roam-reparent)
   (define-key org-mode-map (kbd "C-c n R") #'autoslip-roam-reparent-subtree))
+
+;; The menu and the dashboard are useful from any buffer.
+(global-set-key (kbd "C-c n v") #'autoslip-roam-nav)
+(global-set-key (kbd "C-c n w") #'autoslip-roam-html-open)
 @end lisp
+
+@c ============================================================================
+@node Navigation Menu
+@chapter Navigation Menu
+
+@cindex transient menu
+@cindex navigation menu
+@findex autoslip-roam-nav
+
+The command @code{autoslip-roam-nav} walks the folgezettel hierarchy in a
+transient menu.  The menu redraws itself at each step, so you can move
+through a chain of notes without opening a file until you want to.
+Following links between pairs of files shows one note at a time.  The
+menu shows the chain above the current note, its neighbors, and its
+children at once.
+
+The menu is in the optional file @file{autoslip-roam-nav.el}, which needs
+Emacs 28.1 or later and transient 0.4.0 or later.
+
+@lisp
+(require 'autoslip-roam-nav)
+(global-set-key (kbd "C-c n v") #'autoslip-roam-nav)
+@end lisp
+
+@kbd{C-c n v} starts at the note at point when it has an address.
+@kbd{C-u C-c n v} starts at the root notes.
+
+@ifnottex
+@ifnotinfo
+@image{images/autoslip-roam-nav-menu,,,The transient navigation menu,png}
+@end ifnotinfo
+@end ifnottex
+
+@section What the Menu Shows
+
+For a note such as @code{1.2b}, the menu looks like this:
+
+@example
+Chain of thought
+1. Crystallography
+  1.2 Phasing
+    1.2b Experimental phasing
+ RET Visit this note
+ SPC Peek at this note
+ ^ Up to 1.2 Phasing
+ < Previous: 1.2a Molecular replacement
+ > Next: 1.2c Direct methods
+
+Children (2)
+ 1 1.2b1 SAD
+ 2 1.2b2 MAD
+
+Menu
+ ~ Roots    % Orphans (2)    @@ Jump to any note    + New child    ! Refresh
+@end example
+
+@section Keys
+
+@table @kbd
+@item @var{child key}
+Move to that child.
+@item RET
+Visit the current note and close the menu.
+@item SPC
+Show the current note in another window and keep the menu open.
+@item ^
+Move up to the parent, or to the root notes.
+@item <
+@itemx >
+Move to the previous or next sibling.
+@item ~
+Move to the root notes.
+@item %
+List the orphans.
+@item @@
+Jump to any note by name in the minibuffer.
+@item +
+Visit the current note and create a child of it.
+@item [
+@itemx ]
+Previous or next page when a note has many children.
+@item !
+Read the notes again.
+@item C-g
+Close the menu.
+@end table
+
+@section Root Notes and Orphans
+
+@cindex root note
+@cindex orphan
+The first screen lists only root notes.  A root note has a title that
+begins with an integer and a period, such as @samp{1. Crystallography}.
+A title such as @samp{001 Writing of papers} or @samp{Untitled 3} is not
+a root in the menu, although the package can read a number from it.  The
+list is computed from the org-roam database, so no hand-kept index is
+needed.
+
+A note that is not a root and whose parent does not exist is an orphan.
+Orphans are kept off the first screen and have a screen of their own on
+the @kbd{%} key.  That screen doubles as a list of broken chains.
+
+@section Keys of the Children
+
+The key of a child is the end of its address: the child @code{1.2c} has
+the key @kbd{c}, and the child @code{1.2a7} has the key @kbd{7}.  When
+one key would be the start of another, the keys are padded to one width.
+Under the root @code{1.}, the children @code{1.1}, @code{1.2}, and
+@code{1.14} get the keys @kbd{0 1}, @kbd{0 2}, and @kbd{1 4}.  The fixed
+commands use punctuation, so they never collide with the keys of the
+children.
+
+@c ============================================================================
+@node Browser Dashboard
+@chapter Browser Dashboard
+
+@cindex dashboard
+@cindex HTML
+@findex autoslip-roam-html-open
+@findex autoslip-roam-html-export
+
+The command @code{autoslip-roam-html-open} writes the whole hierarchy to
+one HTML page and opens it in the web browser.  The page is in the
+optional file @file{autoslip-roam-html.el}, which also loads
+@file{autoslip-roam-nav.el}.
+
+@lisp
+(require 'autoslip-roam-html)
+(global-set-key (kbd "C-c n w") #'autoslip-roam-html-open)
+@end lisp
+
+@ifnottex
+@ifnotinfo
+@image{images/autoslip-roam-html-dashboard,,,The browser dashboard,png}
+@end ifnotinfo
+@end ifnottex
+
+@section Features of the Page
+
+@itemize @bullet
+@item
+Only the root notes show at the start.  Each root unfolds level by level.
+@item
+The number beside a note is the count of all notes below it.
+@item
+A filter box narrows the tree to the matching notes and unfolds the
+chains that lead to them.  Press @kbd{/} to start and @kbd{Esc} to clear.
+@item
+Two buttons unfold or fold the whole tree.
+@item
+The page remembers which notes you unfolded, so it looks the same after
+you write it again.
+@item
+Notes without a parent note are listed in a section at the bottom.
+@item
+The page is one file with no outside resources.  It works without a
+network connection, and it prints with all chains unfolded.
+@end itemize
+
+The page is a snapshot.  Run the command again to bring it up to date.
+Roots and orphans follow the same rules as in the navigation menu.
+
+@section Links Back to Emacs
+
+@cindex org-protocol
+With the default value of @code{autoslip-roam-html-link-type}, each note
+is an @samp{org-protocol://roam-node} link that opens the note in Emacs.
+This needs three things: @code{(require 'org-roam-protocol)} in your init
+file, a running Emacs server, and an operating system that sends
+org-protocol links to @command{emacsclient}.  On macOS the last item
+needs a small helper application.  When that is not set up, use one of
+the other values:
+
+@lisp
+(setq autoslip-roam-html-link-type 'file) ; link to the Org files
+(setq autoslip-roam-html-link-type nil)   ; a page without links
+@end lisp
+
+@c ============================================================================
+@node Repairing Links
+@chapter Repairing Links
+
+@cindex repair
+@cindex missing links
+@findex autoslip-roam-repair-links
+
+A vault that was built before automatic linking, or edited by hand, can
+have notes without their parent or child links.
+
+@example
+C-u M-x autoslip-roam-repair-links    report only
+M-x autoslip-roam-repair-links        report, ask once, then repair
+@end example
+
+The command compares every note that has an address with its parent note
+and lists what is missing in the @file{*Autoslip Repair*} buffer.  A line
+that starts with @samp{B} is a note without its link to the parent.  A
+line that starts with @samp{F} is a parent without its link to the note.
+Nothing is changed until you answer the one question.  Links that are
+already there are left alone, so the command is safe to run more than
+once.  Notes whose parent does not exist are skipped, because there is
+nothing to link them to.  Back up or commit your vault before the first
+repair.
+
+@section Linking Root Notes to the Index
+
+@cindex index of indices
+@findex autoslip-roam-add-backlink-from-root-to-00-index
+
+A root note has no parent, so it has no parent link.  To link a root note
+back to the index of indices instead, use:
+
+@example
+M-x autoslip-roam-add-backlink-from-root-to-00-index
+C-u M-x autoslip-roam-add-backlink-from-root-to-00-index
+@end example
+
+The first form links the current root note.  The second form links every
+root note.  The index of indices is the note whose title carries the
+address in @code{autoslip-roam-index-address}, @code{"00.0"} by default.
+The link is placed where a parent link goes and shows the title of the
+index note.  Only the root note is changed.
 
 @c ============================================================================
 @node Testing
@@ -590,7 +927,9 @@ unrelated notes and aborts without making changes if any are found.
 @cindex testing
 @cindex ERT
 
-The package includes a comprehensive test suite with 100 tests.
+The package includes 145 tests: 121 for the core, 16 for the navigation
+menu, and 8 for the browser dashboard.  The last two groups run with
+@command{make test-nav} and @command{make test-html}.
 
 @section Running Tests
 

@@ -1,5 +1,5 @@
 # Autoslip-Roam
-![Version](https://img.shields.io/static/v1?label=autoslip-roam&message=3.0.1&color=brightcolor)
+![Version](https://img.shields.io/static/v1?label=autoslip-roam&message=3.1.0&color=brightcolor)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Emacs](https://img.shields.io/badge/Emacs-27.1+-blueviolet.svg)](https://www.gnu.org/software/emacs/)
 [![org-roam](https://img.shields.io/badge/org--roam-2.0+-green.svg)](https://www.orgroam.com/)
@@ -83,6 +83,9 @@ You can expand this list as your interests evolve.
 - [Usage](#usage)
 - [Configuration](#configuration)
 - [Commands](#commands)
+- [Transient Navigation Menu](#transient-navigation-menu)
+- [Browser Dashboard](#browser-dashboard)
+- [Repairing Links](#repairing-links)
 - [Testing](#testing)
 - [Info Documentation](#info-documentation)
 - [Troubleshooting](#troubleshooting)
@@ -115,6 +118,11 @@ This creates a navigable hierarchy of interconnected notes.
 - **Cross-linked Chains of Thought** - For every note linked under Cross References, show its own ancestor chain so the cross-link is understood in context rather than by name alone.
 - **Reparenting** - Move a note (or a whole subtree) to a new folgezettel address, with links and file names kept in sync.
 - **Quiet Link Storage** - Optional property-drawer mode that keeps parent and child references out of the visible body of the note, reducing merge-conflict surface.
+- **Transient Navigation Menu** - Walk the hierarchy in a menu that shows the chain of thought, the neighboring notes, and the children of the current note at once. The first screen lists the root notes.
+- **Browser Dashboard** - Write the whole hierarchy to one HTML page with a foldable tree, a filter box, and links back to the notes.
+- **Link Repair** - Scan the vault and add every missing parent or child link in one step. Links that are already there are left alone.
+- **Index Backlinks** - Link a root note, or every root note, back to the index of indices (`00.0`).
+- **Lisp Entry Point** - Create a child note from other packages with `autoslip-roam-create-child`. The companion package [autoslip-noter](https://github.com/MooersLab/autoslip-noter) uses it to file org-noter notes on PDF files.
 
 ## Installation
 
@@ -122,6 +130,8 @@ This creates a navigable hierarchy of interconnected notes.
 
 - Emacs 27.1 or later
 - org-roam 2.0 or later
+
+The two optional files, `autoslip-roam-nav.el` (transient menu) and `autoslip-roam-html.el` (browser dashboard), need Emacs 28.1 or later and transient 0.4.0 or later. Transient is built into Emacs from version 28.
 
 ### From MELPA (Recommended)
 
@@ -267,6 +277,9 @@ For notes created without automatic linking:
 M-x autoslip-roam-add-backlink-to-parent
 ```
 
+A link that is already there is left alone, so the command is safe to run twice.
+To repair the whole vault in one step, see [Repairing Links](#repairing-links).
+
 ### Validating Addresses
 
 Check if an address is valid:
@@ -323,6 +336,19 @@ M-x customize-group RET autoslip-roam RET
 
 ;; Heading used above cross-linked chains-of-thought inserted into notes.
 (setq autoslip-roam-chain-crosslink-heading "Cross-linked Chains of Thought")
+
+;; Address of the note that indexes the root notes.
+(setq autoslip-roam-index-address "00.0")
+
+;; Transient menu: children per page and the width of the titles.
+(setq autoslip-roam-nav-page-size 30)
+(setq autoslip-roam-nav-title-width 70)
+
+;; Browser dashboard: the file, the page title, and the kind of link.
+(setq autoslip-roam-html-file
+      (locate-user-emacs-file "autoslip-roam-index.html"))
+(setq autoslip-roam-html-title "Autoslip index")
+(setq autoslip-roam-html-link-type 'org-protocol) ; or 'file, or nil
 ```
 
 ### Link Storage Modes
@@ -381,6 +407,21 @@ and the reparent commands.
 | `autoslip-roam-show-crosslinked-chains` | Open a buffer grouping each cross-linked note's own ancestor chain |
 | `autoslip-roam-reparent` | Move the current note to a new folgezettel address |
 | `autoslip-roam-reparent-subtree` | Move the current note and all descendants to a new address |
+| `autoslip-roam-nav` | Walk the hierarchy in a transient menu. With `C-u`, start at the root notes. Needs `autoslip-roam-nav.el` |
+| `autoslip-roam-html-open` | Write the browser dashboard and open it. Needs `autoslip-roam-html.el` |
+| `autoslip-roam-html-export` | Write the browser dashboard without opening it. With `C-u`, ask for the file |
+
+For Lisp programs, `autoslip-roam-create-child` creates a child note without prompts:
+
+```elisp
+;; PARENT-NODE is an org-roam node whose title carries an address.
+;; ADDRESS may be nil to take the next free address.
+;; A non-nil IMMEDIATE finishes the capture without showing its buffer
+;; and returns the new node.
+(autoslip-roam-create-child parent-node "Title of the note" address immediate)
+```
+
+It signals a `user-error` when the address is not a valid child of the parent or is already in use.
 
 ### Navigation
 
@@ -453,11 +494,121 @@ collisions with unrelated notes before making any changes.
   (define-key org-mode-map (kbd "C-c n x") #'autoslip-roam-show-crosslinked-chains)
   (define-key org-mode-map (kbd "C-c n r") #'autoslip-roam-reparent)
   (define-key org-mode-map (kbd "C-c n R") #'autoslip-roam-reparent-subtree))
+
+;; The menu and the dashboard are useful from any buffer.
+(global-set-key (kbd "C-c n v") #'autoslip-roam-nav)
+(global-set-key (kbd "C-c n w") #'autoslip-roam-html-open)
 ```
+
+## Transient Navigation Menu
+
+`autoslip-roam-nav` walks the folgezettel hierarchy in a [transient](https://github.com/magit/transient) menu.
+The menu redraws itself at each step, so you can move through a chain of notes without opening a file until you want to.
+Following links between pairs of files shows one note at a time.
+The menu shows the chain above the current note, its neighbors, and its children at once.
+
+![Transient navigation menu: the root notes on the left and one note on the right](images/autoslip-roam-nav-menu.png)
+
+*The menu with a sample vault. The image is drawn from the text of the menu, so the colors of your theme will differ.*
+
+Load the optional file and bind the command:
+
+```elisp
+(require 'autoslip-roam-nav)
+(global-set-key (kbd "C-c n v") #'autoslip-roam-nav)
+```
+
+`C-c n v` starts at the note at point when it has an address.
+`C-u C-c n v` starts at the root notes.
+
+| Key | Action |
+|-----|--------|
+| A child key | Move to that child |
+| `RET` | Visit the current note and close the menu |
+| `SPC` | Show the current note in another window and keep the menu open |
+| `^` | Move up to the parent, or to the root notes |
+| `<` and `>` | Move to the previous or next sibling |
+| `~` | Move to the root notes |
+| `%` | List the orphans |
+| `@` | Jump to any note by name in the minibuffer |
+| `+` | Visit the current note and create a child of it |
+| `[` and `]` | Previous or next page when a note has many children |
+| `!` | Read the notes again |
+| `C-g` | Close the menu |
+
+**Root notes.** The first screen lists only root notes. A root note has a title that begins with an integer and a period, such as `1. Crystallography`. A title such as `001 Writing of papers` or `Untitled 3` is not a root in the menu, although the package can read a number from it. The list is computed from the org-roam database, so no hand-kept index is needed.
+
+**Keys of the children.** The key of a child is the end of its address: the child `1.2c` has the key `c`, and the child `1.2a7` has the key `7`. When one key would be the start of another, the keys are padded to one width. Under the root `1.`, the children `1.1`, `1.2`, and `1.14` get the keys `0 1`, `0 2`, and `1 4`. The fixed commands use punctuation, so they never collide with the keys of the children.
+
+**Orphans.** A note that is not a root and whose parent does not exist is an orphan. Orphans are kept off the first screen and have a screen of their own on the `%` key. That screen doubles as a list of broken chains.
+
+## Browser Dashboard
+
+`autoslip-roam-html-open` writes the whole hierarchy to one HTML page and opens it in your web browser.
+
+![Browser dashboard with the roots listed and two chains unfolded](images/autoslip-roam-html-dashboard.png)
+
+*The dashboard with a sample vault.*
+
+Load the optional file and bind the command:
+
+```elisp
+(require 'autoslip-roam-html)
+(global-set-key (kbd "C-c n w") #'autoslip-roam-html-open)
+```
+
+The page offers the following.
+
+- **Roots first.** Only the root notes show at the start. Each root unfolds level by level.
+- **Counts.** The number beside a note is the count of all notes below it.
+- **Filter.** Type in the box, or press `/` first. The tree narrows to the matching notes and unfolds the chains that lead to them. `Esc` clears the filter.
+- **Unfold all and Fold all.** Two buttons.
+- **Memory.** The page remembers which notes you unfolded, so it looks the same after you write it again.
+- **Orphans.** Notes without a parent note are listed in a section at the bottom.
+- **One file.** The page has no outside resources. It works without a network connection, and it prints with all chains unfolded.
+
+The page is a snapshot. Run the command again to bring it up to date.
+Roots and orphans follow the same rules as in the transient menu.
+
+**Links back to Emacs.** With the default value of `autoslip-roam-html-link-type`, each note is an `org-protocol://roam-node` link that opens the note in Emacs. This needs three things: `(require 'org-roam-protocol)` in your init file, a running Emacs server, and an operating system that sends `org-protocol` links to `emacsclient`. On macOS the last item needs a small helper application. When that is not set up, use one of the other values:
+
+```elisp
+(setq autoslip-roam-html-link-type 'file) ; link to the Org files
+(setq autoslip-roam-html-link-type nil)   ; a page without links
+```
+
+## Repairing Links
+
+A vault that was built before automatic linking, or edited by hand, can have notes without their parent or child links.
+
+```
+C-u M-x autoslip-roam-repair-links    report only
+M-x autoslip-roam-repair-links        report, ask once, then repair
+```
+
+The command compares every note that has an address with its parent note and lists what is missing in the `*Autoslip Repair*` buffer.
+A line that starts with `B` is a note without its link to the parent.
+A line that starts with `F` is a parent without its link to the note.
+Nothing is changed until you answer the one question.
+Links that are already there are left alone, so the command is safe to run more than once.
+Notes whose parent does not exist are skipped, because there is nothing to link them to.
+Back up or commit your vault before the first repair.
+
+A root note has no parent, so it has no parent link.
+To link a root note back to the index of indices instead, use:
+
+```
+M-x autoslip-roam-add-backlink-from-root-to-00-index        the current root note
+C-u M-x autoslip-roam-add-backlink-from-root-to-00-index    every root note
+```
+
+The index of indices is the note whose title carries the address in `autoslip-roam-index-address`, `00.0` by default.
+The link is placed where a parent link goes and shows the title of the index note.
+Only the root note is changed.
 
 ## Testing
 
-The package includes 100 comprehensive tests.
+The package includes 145 tests: 121 for the core, 16 for the transient menu, and 8 for the browser dashboard.
 
 ### Running Tests from Command Line
 
@@ -476,6 +627,19 @@ make test-verbose
 
 # Run a specific test
 make test-specific TEST=test-parse-address-single-number
+
+# Run the tests of the transient menu
+make test-nav
+
+# Run the tests of the browser dashboard
+make test-html
+```
+
+The Makefile looks for org-roam and its dependencies in a straight.el build directory first and in the package.el directories second.
+Set `STRAIGHT_BUILD_DIR` when your directory differs from the default:
+
+```bash
+make test STRAIGHT_BUILD_DIR=~/.emacs.d/straight/build
 ```
 
 ### Running Tests in Emacs
@@ -513,6 +677,12 @@ M-x ert RET ^test-parse RET
 | Navigation | 3 | `goto-parent` and `list-children` commands |
 | Chain of thought | 9 | Ancestor walk, org-list rendering, `show` and `insert` |
 | Cross-linked chains | 5 | Cross-link id extraction and `show-crosslinked-chains` |
+| Child creation | 5 | `create-child` and linking of a note that is not yet in the database |
+| Duplicate guard | 3 | Existing parent and child links are left alone |
+| Link repair | 5 | `repair-links` scan, report, confirmation, and both storage modes |
+| Index backlink | 5 | `add-backlink-from-root-to-00-index` and root titles |
+| Transient menu | 16 | Roots, orphans, keys, paging, and drawing of every screen (`make test-nav`) |
+| Browser dashboard | 8 | Page structure, escaping, links, and export (`make test-html`) |
 
 ## Info Documentation
 
@@ -667,6 +837,7 @@ I added a LaTeX preamble drawer to my note template to provide a compact format 
 
 | Version | Changes | Date |
 |:--------|:--------|:-----|
+| 3.1.0 | Added the transient navigation menu (`autoslip-roam-nav`) and the browser dashboard (`autoslip-roam-html-open`) as optional files. Added `autoslip-roam-repair-links`, `autoslip-roam-add-backlink-from-root-to-00-index`, and the Lisp entry point `autoslip-roam-create-child`. Existing parent and child links are no longer duplicated. Fixed automatic linking of a new note, which did nothing because the note was not yet in the org-roam database when the capture hook ran. The Makefile finds dependencies installed with straight.el. Expanded the test suite to 145 tests. | 2026-11-25 |
 | 3.0.1 | Bug fix and updated tests. | 2026-07-10 |
 | 3.0.0 | Renamed the package from `folgezettel-org-roam` to `autoslip-roam`. This step renamed every public symbol, file, buffer name, mode name, and customization group. Users upgrading from 2.x must update their `require` form, customizations, and any key bindings to the new prefix. Root addresses now canonicalize to `N.` with a trailing period (e.g., `1.`) to match numbered-outline conventions like `1. Crystallography`. Legacy bare-integer titles (`1 Crystallography`) are still recognized and treated as equivalent. | 2026-04-23 |
 | 2.5.0 | Added `show-chain-of-thought`, `insert-chain-of-thought`, and `show-crosslinked-chains` commands. Expanded the test suite to 100 tests. | 2026-04-23 |
@@ -674,6 +845,8 @@ I added a LaTeX preamble drawer to my note template to provide a compact format 
 | 0.1 | Initial commit. Extensive edits of the README.md. | 2026-01-31 |
 
 ## Related repositories
+
+- [autoslip-noter](https://github.com/MooersLab/autoslip-noter) connects org-noter to an autoslip-roam zettelkasten. Each PDF file that you annotate gets one folgezettel note, filed under a parent of your choice.
 
 
 ## Funding
