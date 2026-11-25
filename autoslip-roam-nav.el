@@ -26,10 +26,15 @@
 ;; - the previous and the next sibling of the current note,
 ;; - the children of the current note, each with its own key.
 ;;
-;; The first screen lists the root notes.  It is computed from the
-;; org-roam database, so no hand-kept index note is needed.  A note whose
-;; parent does not exist is listed on that screen too, so that no note is
-;; unreachable.
+;; The first screen lists the root notes only.  A root note has a title
+;; that begins with an integer followed by a period, for example
+;; "1. Crystallography".  A title such as "001 Writing of papers" (no
+;; period) or "Untitled 3" (number not at the start) is not a root here,
+;; even though autoslip-roam can read a number from it.  The list is
+;; computed from the org-roam database, so no hand-kept index note is
+;; needed.  A note that is not a root and whose parent does not exist is
+;; an orphan.  Orphans are kept off the first screen and have a screen of
+;; their own, so that no note is unreachable.
 ;;
 ;; Keys for the children are taken from the last part of the address
 ;; when that is unambiguous: the child 1.2c has the key c, and the child
@@ -83,11 +88,14 @@
 
 (defvar autoslip-roam-nav--children nil
   "Hash table that maps an address to the sorted addresses of its children.
-The key `:top' holds the entries of the first screen: the roots and the
-notes whose parent does not exist.")
+The key `:top' holds the roots, which are the entries of the first
+screen.  See `autoslip-roam-nav--root-p' for what counts as a root.  The key `:orphans' holds the notes that are not roots and whose
+parent does not exist.")
 
 (defvar autoslip-roam-nav--current nil
-  "Address of the note the menu is showing, or nil on the first screen.")
+  "Address of the note the menu is showing.
+The value is nil on the first screen and `:orphans' on the screen that
+lists the orphans.")
 
 (defvar autoslip-roam-nav--page 0
   "Zero-based page of the list of children.")
@@ -96,20 +104,44 @@ notes whose parent does not exist.")
 ;;; Index
 ;;; ============================================================================
 
+(defun autoslip-roam-nav--leading-address-p (address title)
+  "Return non-nil when TITLE begins with ADDRESS.
+For a root this means the integer and its period, so \"1. Topic\" begins
+with the address \"1.\" and \"001 Topic\" does not begin with \"001.\"."
+  (and (stringp title)
+       (string-prefix-p address (string-trim-left title))))
+
+(defun autoslip-roam-nav--root-p (address node)
+  "Return non-nil when NODE with ADDRESS is a root note.
+The address must be an integer with a period, and the title of NODE must
+begin with it."
+  (and (autoslip-roam--root-address-p address)
+       (autoslip-roam-nav--leading-address-p
+        address (org-roam-node-title node))))
+
 (defun autoslip-roam-nav--build-index ()
   "Read all folgezettel notes once and fill the lookup tables."
   (let ((index (make-hash-table :test #'equal))
         (children (make-hash-table :test #'equal)))
     (dolist (node (org-roam-node-list))
-      (when-let* ((address (autoslip-roam--extract-from-title
-                            (org-roam-node-title node))))
-        ;; Keep the first note when an address is used twice.
-        (unless (gethash address index)
-          (puthash address node index))))
+      (when-let* ((title (org-roam-node-title node))
+                  (address (autoslip-roam--extract-from-title title)))
+        ;; When an address is found in two titles, keep the note whose
+        ;; title begins with the address.  Otherwise keep the first one.
+        ;; This stops \"Untitled 3\" from hiding the root \"3. Topic\".
+        (let ((existing (gethash address index)))
+          (when (or (null existing)
+                    (and (autoslip-roam-nav--leading-address-p address title)
+                         (not (autoslip-roam-nav--leading-address-p
+                               address (org-roam-node-title existing)))))
+            (puthash address node index)))))
     (maphash
-     (lambda (address _node)
+     (lambda (address node)
        (let* ((parent (autoslip-roam--parse-address address))
-              (key (if (and parent (gethash parent index)) parent :top)))
+              (key (cond
+                    ((and parent (gethash parent index)) parent)
+                    ((autoslip-roam-nav--root-p address node) :top)
+                    (t :orphans))))
          (push address (gethash key children))))
      index)
     (maphash
@@ -122,21 +154,27 @@ notes whose parent does not exist.")
 
 (defun autoslip-roam-nav--node (address)
   "Return the node with ADDRESS, or nil."
-  (and address (gethash address autoslip-roam-nav--index)))
+  (and (stringp address) (gethash address autoslip-roam-nav--index)))
 
 (defun autoslip-roam-nav--children-of (address)
   "Return the sorted child addresses of ADDRESS.
-A nil ADDRESS stands for the first screen."
+A nil ADDRESS stands for the first screen and `:orphans' for the
+screen of orphans."
   (gethash (or address :top) autoslip-roam-nav--children))
 
 (defun autoslip-roam-nav--parent (address)
   "Return the parent address of ADDRESS when that note exists, else nil."
-  (let ((parent (autoslip-roam--parse-address address)))
-    (and parent (gethash parent autoslip-roam-nav--index) parent)))
+  (when (stringp address)
+    (let ((parent (autoslip-roam--parse-address address)))
+      (and parent (gethash parent autoslip-roam-nav--index) parent))))
 
 (defun autoslip-roam-nav--siblings (address)
-  "Return the sorted addresses on the same level as ADDRESS."
-  (autoslip-roam-nav--children-of (autoslip-roam-nav--parent address)))
+  "Return the sorted addresses on the same level as ADDRESS.
+The siblings of an orphan are the other orphans."
+  (let ((orphans (autoslip-roam-nav--children-of :orphans)))
+    (if (member address orphans)
+        orphans
+      (autoslip-roam-nav--children-of (autoslip-roam-nav--parent address)))))
 
 (defun autoslip-roam-nav--neighbor (address offset)
   "Return the sibling of ADDRESS that is OFFSET places away, or nil."
@@ -148,7 +186,7 @@ A nil ADDRESS stands for the first screen."
 (defun autoslip-roam-nav--chain (address)
   "Return the addresses from the top of the chain down to ADDRESS."
   (let (chain)
-    (while address
+    (while (stringp address)
       (push address chain)
       (setq address (autoslip-roam-nav--parent address)))
     chain))
@@ -166,10 +204,10 @@ A nil ADDRESS stands for the first screen."
 
 (defun autoslip-roam-nav--raw-key (address parent)
   "Return the part of ADDRESS that distinguishes it under PARENT.
-A nil PARENT stands for the first screen."
+A PARENT that is not a string stands for one of the two list screens."
   (string-remove-suffix
    "."
-   (if (and parent (string-prefix-p parent address))
+   (if (and (stringp parent) (string-prefix-p parent address))
        (substring address (length parent))
      address)))
 
@@ -263,15 +301,25 @@ are numbered."
     (set-window-point window (or (org-roam-node-point node) 1))))
 
 (defun autoslip-roam-nav-up ()
-  "Move to the parent of the current note, or to the first screen."
+  "Move to the parent of the current note.
+From a root, move to the first screen.  From an orphan, move to the
+screen of orphans."
   (interactive)
-  (autoslip-roam-nav--goto
-   (autoslip-roam-nav--parent autoslip-roam-nav--current)))
+  (let ((current autoslip-roam-nav--current))
+    (autoslip-roam-nav--goto
+     (or (autoslip-roam-nav--parent current)
+         (and (member current (autoslip-roam-nav--children-of :orphans))
+              :orphans)))))
 
 (defun autoslip-roam-nav-top ()
   "Move to the first screen, which lists the roots."
   (interactive)
   (autoslip-roam-nav--goto nil))
+
+(defun autoslip-roam-nav-orphans ()
+  "Move to the screen that lists the notes without a parent note."
+  (interactive)
+  (autoslip-roam-nav--goto :orphans))
 
 (defun autoslip-roam-nav-previous-sibling ()
   "Move to the previous note on the same level."
@@ -334,9 +382,13 @@ are numbered."
 
 (defun autoslip-roam-nav--header ()
   "Return the heading of the menu: the chain down to the current note."
-  (if (null autoslip-roam-nav--current)
-      (format "Autoslip roots (%d notes with an address)"
-              (hash-table-count autoslip-roam-nav--index))
+  (cond
+   ((null autoslip-roam-nav--current)
+    (format "Autoslip roots (%d notes with an address)"
+            (hash-table-count autoslip-roam-nav--index)))
+   ((eq autoslip-roam-nav--current :orphans)
+    "Autoslip orphans (notes that are not roots and have no parent note)")
+   (t
     (let ((chain (autoslip-roam-nav--chain autoslip-roam-nav--current))
           (depth 0)
           lines)
@@ -350,14 +402,16 @@ are numbered."
                 lines))
         (setq depth (1+ depth)))
       (concat (propertize "Chain of thought" 'face 'transient-heading) "\n"
-              (string-join (nreverse lines) "\n")))))
+              (string-join (nreverse lines) "\n"))))))
 
 (defun autoslip-roam-nav--children-heading ()
   "Return the heading of the list of children."
   (let ((count (length (autoslip-roam-nav--children-of
                         autoslip-roam-nav--current)))
         (pages (autoslip-roam-nav--page-count)))
-    (concat (if autoslip-roam-nav--current "Children" "Roots")
+    (concat (cond ((null autoslip-roam-nav--current) "Roots")
+                  ((eq autoslip-roam-nav--current :orphans) "Orphans")
+                  (t "Children"))
             (format " (%d)" count)
             (if (> pages 1)
                 (format ", page %d of %d"
@@ -366,9 +420,14 @@ are numbered."
 
 (defun autoslip-roam-nav--describe-up ()
   "Return the menu text of the command that moves up."
-  (if-let* ((parent (autoslip-roam-nav--parent autoslip-roam-nav--current)))
-      (format "Up to %s" (autoslip-roam-nav--title parent))
-    "Up to the roots"))
+  (let ((current autoslip-roam-nav--current))
+    (cond
+     ((autoslip-roam-nav--parent current)
+      (format "Up to %s" (autoslip-roam-nav--title
+                          (autoslip-roam-nav--parent current))))
+     ((member current (autoslip-roam-nav--children-of :orphans))
+      "Up to the orphans")
+     (t "Up to the roots"))))
 
 (defun autoslip-roam-nav--describe-previous ()
   "Return the menu text of the command that moves to the previous sibling."
@@ -383,17 +442,30 @@ are numbered."
            (autoslip-roam-nav--neighbor autoslip-roam-nav--current 1))))
 
 (defun autoslip-roam-nav--current-p ()
-  "Return non-nil when the menu shows a note and not the first screen."
+  "Return non-nil when the menu shows a note and not a list screen."
+  (stringp autoslip-roam-nav--current))
+
+(defun autoslip-roam-nav--not-top-p ()
+  "Return non-nil when the menu does not show the first screen."
   (and autoslip-roam-nav--current t))
+
+(defun autoslip-roam-nav--orphans-p ()
+  "Return non-nil when there are orphans and their screen is not shown."
+  (and (autoslip-roam-nav--children-of :orphans)
+       (not (eq autoslip-roam-nav--current :orphans))))
+
+(defun autoslip-roam-nav--describe-orphans ()
+  "Return the menu text of the command that lists the orphans."
+  (format "Orphans (%d)" (length (autoslip-roam-nav--children-of :orphans))))
 
 (defun autoslip-roam-nav--previous-p ()
   "Return non-nil when the current note has a previous sibling."
-  (and autoslip-roam-nav--current
+  (and (stringp autoslip-roam-nav--current)
        (autoslip-roam-nav--neighbor autoslip-roam-nav--current -1)))
 
 (defun autoslip-roam-nav--next-p ()
   "Return non-nil when the current note has a next sibling."
-  (and autoslip-roam-nav--current
+  (and (stringp autoslip-roam-nav--current)
        (autoslip-roam-nav--neighbor autoslip-roam-nav--current 1)))
 
 (defun autoslip-roam-nav--children-p ()
@@ -468,7 +540,10 @@ argument TOP, or when there is no such note, start at the list of roots."
   ["Menu"
    :class transient-row
    ("~" "Roots" autoslip-roam-nav-top
-    :if autoslip-roam-nav--current-p)
+    :if autoslip-roam-nav--not-top-p)
+   ("%" autoslip-roam-nav-orphans
+    :description autoslip-roam-nav--describe-orphans
+    :if autoslip-roam-nav--orphans-p)
    ("[" "Previous page" autoslip-roam-nav-previous-page
     :if autoslip-roam-nav--pages-p)
    ("]" "Next page" autoslip-roam-nav-next-page

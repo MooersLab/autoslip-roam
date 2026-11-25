@@ -47,11 +47,66 @@
        (autoslip-roam-nav--build-index)
        ,@body)))
 
-(ert-deftest test-nav-top-lists-roots-and-orphans ()
-  "The first screen lists the roots and the notes without a parent note."
-  (test-autoslip-roam-nav--with-vault test-autoslip-roam-nav--titles
+(ert-deftest test-nav-top-lists-roots-only ()
+  "The first screen lists the roots only.  Orphans have their own screen."
+  (test-autoslip-roam-nav--with-vault
+      (append test-autoslip-roam-nav--titles '("7.3b Lost note"))
+    (should (equal (autoslip-roam-nav--children-of nil) '("1." "2.")))
+    (should (equal (autoslip-roam-nav--children-of :orphans)
+                   '("00.0" "7.3b")))
+    (should (equal (mapcar #'car (autoslip-roam-nav--assign-keys
+                                  (autoslip-roam-nav--children-of nil) nil))
+                   '("1" "2")))))
+
+(ert-deftest test-nav-roots-need-leading-integer-and-period ()
+  "Only titles that begin with an integer and a period are roots."
+  (test-autoslip-roam-nav--with-vault
+      '("001 Writing of papers with Jupyter and PyMOL"
+        "1. index of crystallography"
+        "2. Protein Chemistry"
+        "002 RNA Drug Design"
+        "Untitled 3"
+        "3. Late root"
+        "4. index of RNA structure"
+        "10. index of small-angle scattering"
+        "20. Bionanotechnology"
+        "1.1 Data collection")
     (should (equal (autoslip-roam-nav--children-of nil)
-                   '("00.0" "1." "2.")))))
+                   '("1." "2." "3." "4." "10." "20.")))
+    ;; The keys are the root numbers, padded to one width.
+    (should (equal (mapcar #'car (autoslip-roam-nav--assign-keys
+                                  (autoslip-roam-nav--children-of nil) nil))
+                   '("01" "02" "03" "04" "10" "20")))
+    ;; "Untitled 3" came first but does not hide the root "3. Late root".
+    (should (equal (org-roam-node-title (autoslip-roam-nav--node "3."))
+                   "3. Late root"))
+    ;; Numbered titles without a period are kept on the other screen.
+    (should (equal (autoslip-roam-nav--children-of :orphans)
+                   '("001." "002.")))
+    (should (equal (autoslip-roam-nav--children-of "1.") '("1.1")))))
+
+(ert-deftest test-nav-orphan-screen ()
+  "Orphans are reached from their own screen and lead back to it."
+  (test-autoslip-roam-nav--with-vault
+      (append test-autoslip-roam-nav--titles '("7.3b Lost note"))
+    (cl-letf (((symbol-function 'autoslip-roam-nav--redisplay) #'ignore))
+      (should (autoslip-roam-nav--orphans-p))
+      (should (equal (autoslip-roam-nav--describe-orphans) "Orphans (2)"))
+      (autoslip-roam-nav-orphans)
+      (should (eq autoslip-roam-nav--current :orphans))
+      (should-not (autoslip-roam-nav--current-p))
+      (should-not (autoslip-roam-nav--orphans-p))
+      (should (string-match-p "orphans" (autoslip-roam-nav--header)))
+      (should (equal (autoslip-roam-nav--children-heading) "Orphans (2)"))
+      (should (equal (mapcar #'cdr (autoslip-roam-nav--page-entries))
+                     '("00.0" "7.3b")))
+      (autoslip-roam-nav--goto "00.0")
+      (should (equal (autoslip-roam-nav--describe-up) "Up to the orphans"))
+      (should (equal (autoslip-roam-nav--neighbor "00.0" 1) "7.3b"))
+      (autoslip-roam-nav-up)
+      (should (eq autoslip-roam-nav--current :orphans))
+      (autoslip-roam-nav-top)
+      (should-not autoslip-roam-nav--current))))
 
 (ert-deftest test-nav-children-are-sorted-numerically ()
   "Children are sorted by address, so 1.2 comes before 1.14."
@@ -80,7 +135,8 @@
     (should (equal (autoslip-roam-nav--neighbor "1.2" 1) "1.14"))
     (should-not (autoslip-roam-nav--neighbor "1.1" -1))
     (should-not (autoslip-roam-nav--neighbor "1.14" 1))
-    (should (equal (autoslip-roam-nav--neighbor "1." 1) "2."))))
+    (should (equal (autoslip-roam-nav--neighbor "1." 1) "2."))
+    (should-not (autoslip-roam-nav--neighbor "1." -1))))
 
 (ert-deftest test-nav-keys-from-address-ends ()
   "Unambiguous address ends are used as keys."
@@ -197,6 +253,11 @@
           (should (eq (oref transient--prefix command) 'autoslip-roam-nav))
           (should-not autoslip-roam-nav--current)
           (transient-quit-all)
+          ;; Every screen must draw without an error.
+          (autoslip-roam-nav--goto :orphans)
+          (should (eq (oref transient--prefix command) 'autoslip-roam-nav))
+          (autoslip-roam-nav--goto "00.0")
+          (should (equal autoslip-roam-nav--current "00.0"))
           (autoslip-roam-nav--goto "1.2")
           (should (eq (oref transient--prefix command) 'autoslip-roam-nav))
           (should (equal autoslip-roam-nav--current "1.2")))
