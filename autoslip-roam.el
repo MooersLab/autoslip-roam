@@ -187,7 +187,7 @@ basename does not contain the old folgezettel."
 
 (defvar autoslip-roam--pending-parent-node nil
   "Stores the parent node when creating a child note via
-`autoslip-roam-insert-next-child'.
+`autoslip-roam-create-child' or `autoslip-roam-insert-next-child'.
 This ensures the parent information is available when the capture hook fires.")
 
 (defvar autoslip-roam--pending-child-title nil
@@ -560,13 +560,39 @@ SOURCE-NODE is the node that initiated the link."
       ;; Update org-roam database for this file
       (org-roam-db-update-file target-file))))
 
+(defun autoslip-roam--buffer-title ()
+  "Return the value of the #+title keyword of the current buffer, or nil."
+  (org-with-wide-buffer
+   (goto-char (point-min))
+   (let ((case-fold-search t))
+     (when (re-search-forward "^#\\+title:[ \t]*\\(.*?\\)[ \t]*$" nil t)
+       (let ((title (match-string-no-properties 1)))
+         (unless (string-empty-p title) title))))))
+
+(defun autoslip-roam--node-at-point-or-buffer ()
+  "Return the org-roam node at point, with its title filled in.
+`org-roam-capture-new-node-hook' runs before a new file is saved, so
+the org-roam database does not know the note yet and
+`org-roam-node-at-point' returns a node without a title.  In that case
+build the node from the ID and the #+title keyword of the buffer."
+  (let ((node (org-roam-node-at-point)))
+    (if (and node (org-roam-node-title node))
+        node
+      (when-let* ((id (or (and node (org-roam-node-id node))
+                          (org-entry-get (point-min) "ID")))
+                  (title (autoslip-roam--buffer-title)))
+        (org-roam-node-create
+         :id id
+         :title title
+         :file (buffer-file-name (buffer-base-buffer)))))))
+
 (defun autoslip-roam--process-new-node ()
   "Process newly created org-roam node for folgezettel backlinks.
 This function is called after a new node is created.
 Creates bidirectional links:
 - A link to the parent under '** Parent Note' in the child
 - A link to the child under '** Child Notes' in the parent"
-  (when-let* ((current-node (org-roam-node-at-point))
+  (when-let* ((current-node (autoslip-roam--node-at-point-or-buffer))
               (title (org-roam-node-title current-node))
               (folgezettel (autoslip-roam--extract-from-title title))
               (parent-addr (autoslip-roam--parse-address folgezettel)))
@@ -993,6 +1019,76 @@ Returns nil with an error message if parent-address is invalid."
          (t nil))))))
 
 
+;;;###autoload
+(defun autoslip-roam-create-child (parent-node title &optional address immediate templates)
+  "Create a child note of PARENT-NODE with TITLE and link the two notes.
+This is the non-interactive core of `autoslip-roam-insert-next-child'.
+Other packages can call it to create folgezettel notes from Lisp.
+
+PARENT-NODE is an org-roam node whose title carries a folgezettel address.
+TITLE is the title text without the address.  It may be nil or empty.
+ADDRESS is the folgezettel address of the child.  When nil, the first
+suggestion from `autoslip-roam-suggest-next-child' is used.
+When IMMEDIATE is non-nil, the capture is finalized without showing the
+capture buffer, and the first template in TEMPLATES is used.
+TEMPLATES is a list of org-roam capture templates.  It defaults to
+`org-roam-capture-templates'.
+
+Signal a `user-error' when the parent has no address, when ADDRESS is not
+a valid child of the parent, or when ADDRESS is already in use.
+
+Return the new org-roam node when IMMEDIATE is non-nil and the node can
+be found after the capture.  Otherwise return nil, because the capture
+is still open."
+  (let* ((parent-title (org-roam-node-title parent-node))
+         (parent-fz (autoslip-roam--extract-from-title parent-title)))
+    (unless parent-fz
+      (user-error "Parent note has no folgezettel address in its title: %s"
+                  parent-title))
+    (let* ((address (or address
+                        (car (autoslip-roam-suggest-next-child parent-fz))))
+           (errors (and address
+                        (autoslip-roam-validate-new-child parent-fz address)))
+           (existing (and address (null errors)
+                          (autoslip-roam--index-exists-p address))))
+      (cond
+       ((null address)
+        (user-error "Could not suggest a child address for '%s'" parent-fz))
+       (errors
+        (user-error "Invalid child address '%s': %s"
+                    address (string-join errors "; ")))
+       (existing
+        (user-error "Address '%s' is already used by \"%s\""
+                    address (org-roam-node-title existing))))
+      (let* ((full-title (if (or (null title) (string-empty-p title))
+                             address
+                           (concat address " " title)))
+             (node (org-roam-node-create :title full-title))
+             (templates (or templates org-roam-capture-templates))
+             (templates (if immediate
+                            (list (append (car templates)
+                                          '(:immediate-finish t)))
+                          templates)))
+        ;; Store parent node information for the capture hook
+        (setq autoslip-roam--pending-parent-node parent-node)
+        (setq autoslip-roam--pending-child-title full-title)
+        (condition-case err
+            (org-roam-capture- :node node :templates templates)
+          ;; Do not leave a stale parent behind when the capture fails,
+          ;; for example because of a malformed capture template.
+          (error
+           (setq autoslip-roam--pending-parent-node nil)
+           (setq autoslip-roam--pending-child-title nil)
+           (signal (car err) (cdr err))))
+        (when immediate
+          ;; The database may not know the new file yet, for example
+          ;; when `org-roam-db-autosync-mode' is off.  Sync once if needed.
+          (let ((id (org-roam-node-id node)))
+            (or (and id (org-roam-node-from-id id))
+                (progn (org-roam-db-sync)
+                       (or (and id (org-roam-node-from-id id))
+                           (autoslip-roam--index-exists-p address))))))))))
+
 (defun autoslip-roam-insert-next-child ()
   "Interactively create a new child note with suggested folgezettel.
 Prompts for numeric or alphabetic suffix, validates the choice,
@@ -1027,14 +1123,10 @@ Check if it's a valid address." current-fz)
                 (autoslip-roam-insert-next-child)))
              ;; Valid and available - prompt for title and create the note
              (t
-              (let* ((note-title (read-string (format "Enter title for %s: " choice)))
-                     (full-title (if (string-empty-p note-title)
-                                     choice
-                                   (concat choice " " note-title))))
-                ;; Store parent node information for the capture hook
-                (setq autoslip-roam--pending-parent-node current-node)
-                (setq autoslip-roam--pending-child-title full-title)
-                (org-roam-capture- :node (org-roam-node-create :title full-title))))))))
+              (let ((note-title (read-string (format "Enter title for %s: " choice))))
+                ;; The shared core stores the parent for the capture hook
+                ;; and starts the capture.
+                (autoslip-roam-create-child current-node note-title choice)))))))
     (message "Current note does not have a valid folgezettel address in title: %s"
              (if (and (org-roam-node-at-point)
                       (org-roam-node-title (org-roam-node-at-point)))

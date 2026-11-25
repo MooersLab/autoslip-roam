@@ -29,24 +29,42 @@ USER_LISPDIR ?= $(USER_EMACS_DIR)/site-lisp/autoslip-roam
 # Custom package directories for dependencies
 CUSTOM_PACKAGE_DIR = ~/e30fewpackages/elpa
 STANDARD_PACKAGE_DIR = ~/.emacs.d/elpa
+# straight.el build directory. Packages here have unversioned directory names.
+STRAIGHT_BUILD_DIR ?= $(HOME)/minimal-emacs.d/var/straight/build
 
 # ==============================================================================
 # Auto-detect Dependencies
 # ==============================================================================
 
-ORG_ROAM_PATH := $(shell find $(CUSTOM_PACKAGE_DIR) $(STANDARD_PACKAGE_DIR) -maxdepth 1 -type d -name "org-roam-[0-9]*" 2>/dev/null | head -1)
-EMACSQL_PATH := $(shell find $(CUSTOM_PACKAGE_DIR) $(STANDARD_PACKAGE_DIR) -maxdepth 1 -type d -name "emacsql-[0-9]*" 2>/dev/null | head -1)
-MAGIT_SECTION_PATH := $(shell find $(CUSTOM_PACKAGE_DIR) $(STANDARD_PACKAGE_DIR) -maxdepth 1 -type d -name "magit-section-[0-9]*" 2>/dev/null | head -1)
-DASH_PATH := $(shell find $(CUSTOM_PACKAGE_DIR) $(STANDARD_PACKAGE_DIR) -maxdepth 1 -type d -name "dash-[0-9]*" 2>/dev/null | head -1)
-S_PATH := $(shell find $(CUSTOM_PACKAGE_DIR) $(STANDARD_PACKAGE_DIR) -maxdepth 1 -type d -name "s-[0-9]*" 2>/dev/null | head -1)
-F_PATH := $(shell find $(CUSTOM_PACKAGE_DIR) $(STANDARD_PACKAGE_DIR) -maxdepth 1 -type d -name "f-[0-9]*" 2>/dev/null | head -1)
-COMPAT_PATH := $(shell find $(CUSTOM_PACKAGE_DIR) $(STANDARD_PACKAGE_DIR) -maxdepth 1 -type d -name "compat-[0-9]*" 2>/dev/null | head -1)
-COND_LET_PATH := $(shell find $(CUSTOM_PACKAGE_DIR) $(STANDARD_PACKAGE_DIR) -maxdepth 1 -type d -name "cond-let-[0-9]*" 2>/dev/null | head -1)
-LLAMA_PATH := $(shell find $(CUSTOM_PACKAGE_DIR) $(STANDARD_PACKAGE_DIR) -maxdepth 1 -type d -name "llama-[0-9]*" 2>/dev/null | head -1)
-SEQ_PATH := $(shell find $(CUSTOM_PACKAGE_DIR) $(STANDARD_PACKAGE_DIR) -maxdepth 1 -type d -name "seq-[0-9]*" 2>/dev/null | head -1)
+# find-dep: look for package $(1) in the straight build directory first,
+# then for a versioned directory (for example org-roam-2.2.2) in the elpa
+# directories.
+find-dep = $(firstword $(wildcard $(STRAIGHT_BUILD_DIR)/$(1)) \
+  $(shell find $(CUSTOM_PACKAGE_DIR) $(STANDARD_PACKAGE_DIR) -maxdepth 1 -type d -name "$(1)-[0-9]*" 2>/dev/null | head -1))
+
+ORG_ROAM_PATH := $(call find-dep,org-roam)
+EMACSQL_PATH := $(call find-dep,emacsql)
+MAGIT_SECTION_PATH := $(call find-dep,magit-section)
+DASH_PATH := $(call find-dep,dash)
+S_PATH := $(call find-dep,s)
+F_PATH := $(call find-dep,f)
+COMPAT_PATH := $(call find-dep,compat)
+COND_LET_PATH := $(call find-dep,cond-let)
+LLAMA_PATH := $(call find-dep,llama)
+SEQ_PATH := $(call find-dep,seq)
+# With straight, org-roam is compiled against the straight copy of org, and
+# magit-section needs a recent transient. Both are optional.
+ORG_PATH := $(wildcard $(STRAIGHT_BUILD_DIR)/org)
+TRANSIENT_PATH := $(call find-dep,transient)
 
 # Build load path
 LOAD_PATH = -L .
+ifneq ($(ORG_PATH),)
+    LOAD_PATH += -L $(ORG_PATH)
+endif
+ifneq ($(TRANSIENT_PATH),)
+    LOAD_PATH += -L $(TRANSIENT_PATH)
+endif
 ifneq ($(COMPAT_PATH),)
     LOAD_PATH += -L $(COMPAT_PATH)
 endif
@@ -86,7 +104,7 @@ BATCH_FLAGS = --batch --no-init-file $(LOAD_PATH)
 # Targets
 # ==============================================================================
 
-.PHONY: all test test-batch test-unit test-integration test-edge test-regression \
+.PHONY: all test test-batch test-nav test-unit test-integration test-edge test-regression \
         test-perf test-verbose test-specific test-quick test-interactive \
         check-deps compile compile-tests compile-all lint checkdoc check \
         info install install-info install-lisp install-user install-info-user \
@@ -103,6 +121,7 @@ check-deps: ## Check that all dependencies are available
 	@if [ -z "$(ORG_ROAM_PATH)" ]; then \
 		echo "ERROR: org-roam not found"; \
 		echo "  Install with: M-x package-install RET org-roam RET"; \
+		echo "  Or set STRAIGHT_BUILD_DIR (now: $(STRAIGHT_BUILD_DIR))"; \
 		exit 1; \
 	else \
 		echo "✓ org-roam: $(ORG_ROAM_PATH)"; \
@@ -188,6 +207,13 @@ test-specific: ## Run a specific test (use TEST=test-name)
 		-l $(PACKAGE) \
 		-l $(TEST_FILE) \
 		--eval "(ert-run-tests-batch-and-exit '$(TEST))"
+
+test-nav: ## Run the tests of the transient navigation menu
+	@echo "Running navigation tests..."
+	$(EMACS) $(BATCH_FLAGS) \
+		-l ert \
+		-l test-autoslip-roam-nav.el \
+		-f ert-run-tests-batch-and-exit
 
 test-quick: ## Run quick test suite (parsing and validation)
 	@echo "Running quick tests..."

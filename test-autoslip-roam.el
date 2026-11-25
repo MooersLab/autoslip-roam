@@ -1249,6 +1249,57 @@ The legacy bare-integer root title (\"1 Root\") canonicalizes to \"1.\"."
   (interactive)
   (ert-run-tests-interactively "^test-\\(insert\\|bidirectional\\|mode\\)"))
 
+;;; ============================================================================
+;;; Unit Tests: autoslip-roam-create-child and the new-node fallback
+;;; ============================================================================
+
+(ert-deftest test-create-child-parent-without-address ()
+  "A parent without a folgezettel address signals a `user-error'."
+  (let ((parent (test-autoslip-roam--create-mock-node "p" "No address" "/tmp/p.org")))
+    (should-error (autoslip-roam-create-child parent "Child")
+                  :type 'user-error)))
+
+(ert-deftest test-create-child-duplicate-address ()
+  "An address that is already in use signals a `user-error'."
+  (let* ((parent (test-autoslip-roam--create-mock-node "p" "1.2 Parent" "/tmp/p.org"))
+         (child (test-autoslip-roam--create-mock-node "c" "1.2a Child" "/tmp/c.org")))
+    (test-autoslip-roam--with-mock-nodes (list parent child)
+      (should-error (autoslip-roam-create-child parent "Other" "1.2a")
+                    :type 'user-error))))
+
+(ert-deftest test-create-child-invalid-address ()
+  "An address that is not a child of the parent signals a `user-error'."
+  (let ((parent (test-autoslip-roam--create-mock-node "p" "1.2 Parent" "/tmp/p.org")))
+    (test-autoslip-roam--with-mock-nodes (list parent)
+      (should-error (autoslip-roam-create-child parent "Other" "3.4a")
+                    :type 'user-error))))
+
+(ert-deftest test-create-child-starts-capture-with-full-title ()
+  "The capture receives the address and the title, and the parent is stored."
+  (let ((parent (test-autoslip-roam--create-mock-node "p" "1.2 Parent" "/tmp/p.org"))
+        (autoslip-roam--pending-parent-node nil)
+        (autoslip-roam--pending-child-title nil)
+        captured)
+    (test-autoslip-roam--with-mock-nodes (list parent)
+      (cl-letf (((symbol-function 'org-roam-capture-)
+                 (lambda (&rest args)
+                   (setq captured (org-roam-node-title (plist-get args :node))))))
+        (should-not (autoslip-roam-create-child parent "Child"))
+        (should (equal captured "1.2a Child"))
+        (should (eq autoslip-roam--pending-parent-node parent))
+        (should (equal autoslip-roam--pending-child-title "1.2a Child"))))))
+
+(ert-deftest test-node-at-point-or-buffer-falls-back-to-buffer ()
+  "A note that the database does not know yet is built from the buffer."
+  (with-temp-buffer
+    (org-mode)
+    (insert ":PROPERTIES:\n:ID:       new-id\n:END:\n#+title: 1.2a New note\n")
+    (cl-letf (((symbol-function 'org-roam-node-at-point)
+               (lambda (&rest _) (org-roam-node-create :id "new-id"))))
+      (let ((node (autoslip-roam--node-at-point-or-buffer)))
+        (should (equal (org-roam-node-id node) "new-id"))
+        (should (equal (org-roam-node-title node) "1.2a New note"))))))
+
 (provide 'test-autoslip-roam)
 
 ;;; test-autoslip-roam.el ends here
