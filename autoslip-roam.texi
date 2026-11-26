@@ -7,7 +7,7 @@
 @c %**end of header
 
 @copying
-This manual is for Autoslip Roam (version 3.1.0).
+This manual is for Autoslip Roam (version 3.2.0).
 
 Copyright @copyright{} 2025 Blaine Mooers.
 
@@ -27,7 +27,7 @@ Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts.
 @titlepage
 @title Autoslip Roam Manual
 @subtitle Automatic Folgezettel Backlink Generation for Org-Roam
-@subtitle Version 3.1.0
+@subtitle Version 3.2.0
 @author Blaine Mooers
 @page
 @vskip 0pt plus 1filll
@@ -57,6 +57,7 @@ automatic bidirectional link generation for org-roam notes using folgezettel
 * Commands::                    Interactive commands reference.
 * Navigation Menu::             Walking the hierarchy in a transient menu.
 * Browser Dashboard::           The hierarchy as one HTML page.
+* Subtree Note Generator::      Notes from an outline of headlines.
 * Repairing Links::             Adding links that are missing.
 * Testing::                     Running the test suite.
 * Troubleshooting::             Common issues and solutions.
@@ -135,6 +136,9 @@ Browser dashboard that writes the whole hierarchy to one HTML page
 Repair command that adds every missing parent or child link in the vault
 @item
 Command that links a root note back to the index of indices
+@item
+Subtree note generator that turns an outline of addressed headlines
+into linked notes in one step
 @item
 Lisp entry point for creating a child note from other packages
 @end itemize
@@ -876,6 +880,239 @@ the other values:
 @end lisp
 
 @c ============================================================================
+@node Subtree Note Generator
+@chapter Subtree Note Generator
+
+@cindex subtree note generator
+@cindex outline
+@cindex headlines, notes from
+@findex autoslip-subtree-notes-generator-preview
+@findex autoslip-subtree-notes-generator-generate
+@findex autoslip-subtree-notes-generator-generate-from-file
+@findex autoslip-subtree-notes-generator-generate-from-clipboard
+
+The command @code{autoslip-roam-insert-next-child} creates one child
+note at a time.  The subtree note generator creates a whole branch at
+once.  You write the branch as an outline of addressed headlines, and
+one command turns each headline into a note with its parent and child
+links in place.  Think of the outline as the blueprint and of the
+generator as the builder.
+
+The generator is in the optional file
+@file{autoslip-subtree-notes-generator.el}.
+
+@lisp
+(require 'autoslip-subtree-notes-generator)
+@end lisp
+
+@section Tutorial
+
+This tutorial builds a small branch below the root note
+@samp{7. Crystallography}.  Try it in a test vault first.
+
+@enumerate
+@item
+Write the outline in the parent note.  Visit the parent note and add one
+headline per planned note.  Each headline is stars, a folgezettel
+address, and a title.
+
+@example
+:PROPERTIES:
+:ID:       0d4c6a52-6c1b-4a8e-9a3e-2f5d7c1b9e10
+:END:
+#+title: 7. Crystallography
+
+* Outline
+** 7.1 Crystal growth
+*** 7.1a Vapor diffusion
+*** 7.1b Screening strategies
+** 7.2 Symmetry and space groups
+*** 7.2a Screw axes
+@end example
+
+The address decides the parent of each note.  The number of stars does
+not, so the outline can start at any level.
+
+@item
+Preview the plan with @kbd{M-x autoslip-subtree-notes-generator-preview}.
+Press @kbd{RET} at the prompt for the kinds of notes to accept
+@samp{plain}.  The @file{*Autoslip Subtree Notes*} buffer lists the
+notes that would be written.  Nothing is written at this step.
+
+@example
+Plan: 5 notes below 7.
+Outline from this note
+
+7.1            plain      7_1_crystal_growth.org
+7.1a           plain      7_1a_vapor_diffusion.org
+7.1b           plain      7_1b_screening_strategies.org
+7.2            plain      7_2_symmetry_and_space_groups.org
+7.2a           plain      7_2a_screw_axes.org
+@end example
+
+@item
+Generate the notes with @kbd{M-x autoslip-subtree-notes-generator-generate}.
+The command shows the same plan and asks one question.  Answer @kbd{y}
+to write the notes.  The file names follow the parent note.  When its
+file name starts with an org-roam timestamp, the new file names do too.
+
+@item
+Look at the result.  Each new note has a new ID, the headline as its
+title, ten blank lines for your text, and a link back to its parent.  A
+note with children of its own also lists them.
+
+@example
+:PROPERTIES:
+:ID:       8542a59c-1c8d-48d6-b1fe-21edd4fd8449
+:END:
+#+title: 7.1 Crystal growth
+@end example
+
+@noindent
+Ten blank lines follow the title, and then:
+
+@example
+* Parent Note
+[[id:0d4c6a52-6c1b-4a8e-9a3e-2f5d7c1b9e10][Parent note]]
+
+* Child Notes
+[[id:3fa0db8c-96b2-487c-ae5c-cd5f38565974][7.1a Vapor diffusion]]
+[[id:5b0e7c39-2c55-4d0b-8a57-0f3f1f6f2a11][7.1b Screening strategies]]
+@end example
+
+The parent note gains a @samp{Child Notes} section with links to
+@samp{7.1} and @samp{7.2}.  Its outline is left as it is.  The new notes
+are in the org-roam database at once.
+
+@item
+Grow the branch later.  Add more headlines to the outline and run the
+command again.  A note whose address is already in the vault is never
+overwritten.  It is skipped, so only the new headlines become notes.
+@end enumerate
+
+@section Outline in a File or in the Clipboard
+
+@cindex clipboard
+@cindex outline file
+The outline does not have to sit in the parent note.  In every case, run
+the command from the buffer of the parent note, because the new notes
+are linked to that note.
+
+@table @code
+@item autoslip-subtree-notes-generator-generate
+Read the outline from the parent note.  With @kbd{C-u}, ask where the
+outline is.
+@item autoslip-subtree-notes-generator-generate-from-file
+Read the outline from a file.  The file is only read and is never
+changed.  It does not have to be an org-roam note.
+@item autoslip-subtree-notes-generator-generate-from-clipboard
+Read the outline from the system clipboard, or from the newest entry in
+the kill ring when the clipboard is empty.
+@item autoslip-subtree-notes-generator-preview
+Show the plan and write nothing.  With @kbd{C-u}, ask where the outline
+is.
+@end table
+
+@section Kinds of Notes and Templates
+
+@cindex kinds of notes
+@cindex templates
+@vindex autoslip-subtree-notes-generator-kinds
+@vindex autoslip-subtree-notes-generator-templates-directory
+The commands ask for the kinds of notes, in level order and separated by
+commas.  The first kind is for the children of the parent note, the
+second for the grandchildren, and the last kind repeats for all deeper
+levels.  With @samp{hub,plain}, the notes @samp{7.1} and @samp{7.2} are
+hub notes and everything below them is plain.  The default answer comes
+from @code{autoslip-subtree-notes-generator-kinds}.
+
+The kind @samp{plain} needs no template.  Any other kind needs a
+template file with the name of the kind in
+@code{autoslip-subtree-notes-generator-templates-directory}.  A template
+@file{hub.org} could look like this:
+
+@example
+#+filetags: :hub:
+#+date: $@{date@}
+* Overview of $@{heading@}
+* Open questions
+@end example
+
+The keyword lines of the template go directly below the title, above the
+ten blank lines.  The headings of the template go below the
+@samp{Parent Note} section.  A template must not hold a @samp{#+title:}
+line or a property drawer.  These placeholders are filled in:
+
+@table @code
+@item $@{title@}
+The address and the headline.
+@item $@{heading@}
+The headline without the address.
+@item $@{address@}
+The folgezettel address.
+@item $@{kind@}
+The kind of the note.
+@item $@{date@}
+The date of today.
+@end table
+
+@section Options
+
+@table @code
+@item autoslip-subtree-notes-generator-kinds
+Default kinds of notes in level order.  Default: @code{("plain")}
+
+@item autoslip-subtree-notes-generator-templates-directory
+Directory of the template files.  Default: @code{nil}
+
+@item autoslip-subtree-notes-generator-blank-lines
+@vindex autoslip-subtree-notes-generator-blank-lines
+Number of blank lines between the title block and the parent heading.
+Default: @code{10}
+
+@item autoslip-subtree-notes-generator-copy-index-lines
+@vindex autoslip-subtree-notes-generator-copy-index-lines
+Whether to copy the lines that start with @samp{#+LATEX: \index@{} and
+sit directly below a headline to the note.  Default: @code{t}
+@end table
+
+@section Rules and Limits
+
+@itemize @bullet
+@item
+Only headlines whose address lies below the address of the parent note
+become notes.  Other headlines are ignored, and so are headlines with an
+invalid address such as @samp{7.2.3}.
+@item
+Every new note needs a parent note in the outline or in the vault.  A
+headline such as @samp{7.5a} without a note or a headline for
+@samp{7.5} stops the command before anything is written.
+@item
+An address that appears twice in the outline stops the command.
+@item
+The parent note needs an ID.  The command offers to create one when it
+is missing.
+@item
+Only the @code{headings} value of @code{autoslip-roam-link-storage} is
+supported.
+@item
+Back up or commit your vault before the first run.
+@end itemize
+
+@section Use from Lisp
+
+The generate function takes the kinds, a flag to skip the question, a
+flag for a dry run, and the outline source.
+
+@lisp
+;; Outline in the current note, no question.
+(autoslip-subtree-notes-generator-generate '("hub" "plain") t)
+;; Outline in a file, or in the clipboard.
+(autoslip-subtree-notes-generator-generate '("plain") t nil "~/outline.org")
+(autoslip-subtree-notes-generator-generate '("plain") t nil 'clipboard)
+@end lisp
+
+@c ============================================================================
 @node Repairing Links
 @chapter Repairing Links
 
@@ -927,9 +1164,13 @@ index note.  Only the root note is changed.
 @cindex testing
 @cindex ERT
 
-The package includes 145 tests: 121 for the core, 16 for the navigation
-menu, and 8 for the browser dashboard.  The last two groups run with
-@command{make test-nav} and @command{make test-html}.
+The package includes 160 tests: 122 for the core, 16 for the navigation
+menu, 8 for the browser dashboard, and 14 for the subtree note
+generator.  The second and third groups run with
+@command{make test-nav} and @command{make test-html}.  The tests of the
+subtree note generator are in
+@file{test-autoslip-subtree-notes-generator.el} and are loaded like the
+other test files.
 
 @section Running Tests
 
@@ -966,26 +1207,34 @@ Or load and run specific categories:
 
 @multitable @columnfractions .3 .1 .6
 @headitem Category @tab Count @tab Description
-@item Parsing @tab 7 @tab Address parsing functions
-@item Extraction @tab 5 @tab Title extraction
+@item Parsing @tab 7 @tab Address parsing
+@item Ancestor check @tab 3 @tab Whether one address lies above another
+@item Extraction @tab 6 @tab Title extraction, including the refusal of addresses with two periods
 @item Letter sequences @tab 5 @tab Alphabet incrementing
 @item Validation @tab 13 @tab Address validation
-@item Suggestions @tab 8 @tab Child address suggestions
-@item Parent lookup @tab 6 @tab @code{find-parent} and @code{index-exists} helpers
-@item Link insertion @tab 6 @tab Link creation in files
-@item Integration @tab 2 @tab Full workflow tests
+@item Suggestions @tab 8 @tab Child suggestions
+@item Parent lookup @tab 6 @tab Find-parent and index-exists helpers
+@item Link insertion @tab 6 @tab File operations
+@item Integration @tab 2 @tab Full workflows
 @item Edge cases @tab 5 @tab Boundary conditions
-@item Regression @tab 5 @tab Previously fixed bugs
-@item Performance @tab 2 @tab Speed benchmarks
+@item Regression @tab 5 @tab Fixed bugs
+@item Performance @tab 2 @tab Speed tests
 @item Address helpers @tab 5 @tab Depth, tokens, canonical ordering
 @item Children lookup @tab 2 @tab Direct-children discovery
 @item Rename helpers @tab 4 @tab Address-driven file renaming
 @item Link storage @tab 3 @tab Property-drawer storage mode
 @item Reparent helpers @tab 3 @tab Title, backlink, and forward-link rewrites
 @item Tree view @tab 2 @tab @code{show-tree} buffer contents
-@item Navigation @tab 3 @tab @code{goto-parent} and @code{list-children}
-@item Chain of thought @tab 9 @tab Ancestor walk, org-list rendering, show/insert
+@item Navigation @tab 3 @tab @code{goto-parent} and @code{list-children} commands
+@item Chain of thought @tab 9 @tab Ancestor walk, org-list rendering, @code{show} and @code{insert}
 @item Cross-linked chains @tab 5 @tab Cross-link id extraction and @code{show-crosslinked-chains}
+@item Child creation @tab 5 @tab @code{create-child} and linking of a note that is not yet in the database
+@item Duplicate guard @tab 3 @tab Existing parent and child links are left alone
+@item Link repair @tab 5 @tab @code{repair-links} scan, report, confirmation, and both storage modes
+@item Index backlink @tab 5 @tab @code{add-backlink-from-root-to-00-index} and root titles
+@item Transient menu @tab 16 @tab Roots, orphans, keys, paging, and drawing of every screen (@code{make test-nav})
+@item Browser dashboard @tab 8 @tab Page structure, escaping, links, and export (@code{make test-html})
+@item Subtree note generator @tab 14 @tab Outline reading from the note, a file, and the clipboard; kinds, templates, links, repeated runs, and error cases
 @end multitable
 
 @section Test File Structure

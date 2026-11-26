@@ -1,5 +1,5 @@
 # Autoslip-Roam
-![Version](https://img.shields.io/static/v1?label=autoslip-roam&message=3.1.0&color=brightcolor)
+![Version](https://img.shields.io/static/v1?label=autoslip-roam&message=3.2.0&color=brightcolor)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Emacs](https://img.shields.io/badge/Emacs-27.1+-blueviolet.svg)](https://www.gnu.org/software/emacs/)
 [![org-roam](https://img.shields.io/badge/org--roam-2.0+-green.svg)](https://www.orgroam.com/)
@@ -85,6 +85,7 @@ You can expand this list as your interests evolve.
 - [Commands](#commands)
 - [Transient Navigation Menu](#transient-navigation-menu)
 - [Browser Dashboard](#browser-dashboard)
+- [Subtree Note Generator](#subtree-note-generator)
 - [Repairing Links](#repairing-links)
 - [Testing](#testing)
 - [Info Documentation](#info-documentation)
@@ -122,6 +123,7 @@ This creates a navigable hierarchy of interconnected notes.
 - **Browser Dashboard** - Write the whole hierarchy to one HTML page with a foldable tree, a filter box, and links back to the notes.
 - **Link Repair** - Scan the vault and add every missing parent or child link in one step. Links that are already there are left alone.
 - **Index Backlinks** - Link a root note, or every root note, back to the index of indices (`00.0`).
+- **Subtree Note Generator** - Turn an outline of addressed headlines into linked notes in one step. The outline can sit in the parent note, in a file, or in the clipboard.
 - **Lisp Entry Point** - Create a child note from other packages with `autoslip-roam-create-child`. The companion package [autoslip-noter](https://github.com/MooersLab/autoslip-noter) uses it to file org-noter notes on PDF files.
 
 ## Installation
@@ -132,6 +134,7 @@ This creates a navigable hierarchy of interconnected notes.
 - org-roam 2.0 or later
 
 The two optional files, `autoslip-roam-nav.el` (transient menu) and `autoslip-roam-html.el` (browser dashboard), need Emacs 28.1 or later and transient 0.4.0 or later. Transient is built into Emacs from version 28.
+The optional file `autoslip-subtree-notes-generator.el` (subtree note generator) has the same requirements as the core.
 
 ### From MELPA (Recommended)
 
@@ -349,6 +352,13 @@ M-x customize-group RET autoslip-roam RET
       (locate-user-emacs-file "autoslip-roam-index.html"))
 (setq autoslip-roam-html-title "Autoslip index")
 (setq autoslip-roam-html-link-type 'org-protocol) ; or 'file, or nil
+
+;; Subtree note generator: the kinds per level, the folder of the templates,
+;; the blank lines below the title, and the copying of index lines.
+(setq autoslip-subtree-notes-generator-kinds '("plain"))
+(setq autoslip-subtree-notes-generator-templates-directory nil)
+(setq autoslip-subtree-notes-generator-blank-lines 10)
+(setq autoslip-subtree-notes-generator-copy-index-lines t)
 ```
 
 ### Link Storage Modes
@@ -410,6 +420,10 @@ and the reparent commands.
 | `autoslip-roam-nav` | Walk the hierarchy in a transient menu. With `C-u`, start at the root notes. Needs `autoslip-roam-nav.el` |
 | `autoslip-roam-html-open` | Write the browser dashboard and open it. Needs `autoslip-roam-html.el` |
 | `autoslip-roam-html-export` | Write the browser dashboard without opening it. With `C-u`, ask for the file |
+| `autoslip-subtree-notes-generator-preview` | Show the notes that would be written from the outline below the current note. Nothing is written. Needs `autoslip-subtree-notes-generator.el` |
+| `autoslip-subtree-notes-generator-generate` | Write one linked note for each addressed headline below the current note. With `C-u`, ask where the outline is |
+| `autoslip-subtree-notes-generator-generate-from-file` | The same, with the outline read from a file |
+| `autoslip-subtree-notes-generator-generate-from-clipboard` | The same, with the outline read from the clipboard |
 
 For Lisp programs, `autoslip-roam-create-child` creates a child note without prompts:
 
@@ -577,6 +591,180 @@ Roots and orphans follow the same rules as in the transient menu.
 (setq autoslip-roam-html-link-type nil)   ; a page without links
 ```
 
+## Subtree Note Generator
+
+`autoslip-roam-insert-next-child` creates one child note at a time.
+The subtree note generator creates a whole branch at once.
+You write the branch as an outline of addressed headlines, and one command turns each headline into a note with its parent and child links in place.
+Think of the outline as the blueprint and of the generator as the builder.
+
+Load the optional file:
+
+```elisp
+(require 'autoslip-subtree-notes-generator)
+```
+
+### Tutorial
+
+This tutorial builds a small branch below the root note `7. Crystallography`.
+Try it in a test vault first.
+
+**Step 1. Write the outline in the parent note.**
+Visit the parent note and add one headline per planned note.
+Each headline is stars, a folgezettel address, and a title.
+
+```org
+:PROPERTIES:
+:ID:       0d4c6a52-6c1b-4a8e-9a3e-2f5d7c1b9e10
+:END:
+#+title: 7. Crystallography
+
+* Outline
+** 7.1 Crystal growth
+*** 7.1a Vapor diffusion
+*** 7.1b Screening strategies
+** 7.2 Symmetry and space groups
+*** 7.2a Screw axes
+```
+
+The address decides the parent of each note.
+The number of stars does not, so the outline can start at any level.
+You can write the outline by hand or ask an AI assistant to draft it from a topic, and then edit the titles until they suit you.
+
+**Step 2. Preview the plan.**
+
+```
+M-x autoslip-subtree-notes-generator-preview
+```
+
+Press `RET` at the prompt for the kinds of notes to accept `plain`.
+The `*Autoslip Subtree Notes*` buffer lists the notes that would be written.
+Nothing is written at this step.
+
+```
+Plan: 5 notes below 7.
+Outline from this note
+
+7.1            plain      7_1_crystal_growth.org
+7.1a           plain      7_1a_vapor_diffusion.org
+7.1b           plain      7_1b_screening_strategies.org
+7.2            plain      7_2_symmetry_and_space_groups.org
+7.2a           plain      7_2a_screw_axes.org
+```
+
+**Step 3. Generate the notes.**
+
+```
+M-x autoslip-subtree-notes-generator-generate
+```
+
+The command shows the same plan and asks one question.
+Answer `y` to write the notes.
+The file names follow the parent note. When its file name starts with an org-roam timestamp, the new file names do too.
+
+**Step 4. Look at the result.**
+Each new note has a new ID, the headline as its title, ten blank lines for your text, and a link back to its parent.
+A note with children of its own also lists them.
+
+```org
+:PROPERTIES:
+:ID:       8542a59c-1c8d-48d6-b1fe-21edd4fd8449
+:END:
+#+title: 7.1 Crystal growth
+
+
+
+
+
+
+
+
+
+
+* Parent Note
+[[id:0d4c6a52-6c1b-4a8e-9a3e-2f5d7c1b9e10][Parent note]]
+
+* Child Notes
+[[id:3fa0db8c-96b2-487c-ae5c-cd5f38565974][7.1a Vapor diffusion]]
+[[id:5b0e7c39-2c55-4d0b-8a57-0f3f1f6f2a11][7.1b Screening strategies]]
+```
+
+The parent note gains a `Child Notes` section with links to `7.1` and `7.2`.
+Its outline is left as it is.
+The new notes are in the org-roam database at once, so the tree view, the transient menu, and the dashboard show them without a sync.
+
+**Step 5. Grow the branch later.**
+Add more headlines to the outline and run the command again.
+A note whose address is already in the vault is never overwritten.
+It is skipped, so only the new headlines become notes.
+
+### Outline in a File or in the Clipboard
+
+The outline does not have to sit in the parent note.
+In every case, run the command from the buffer of the parent note, because the new notes are linked to that note.
+
+| Outline source | Command |
+|----------------|---------|
+| The parent note | `M-x autoslip-subtree-notes-generator-generate` |
+| A file | `M-x autoslip-subtree-notes-generator-generate-from-file` |
+| The clipboard | `M-x autoslip-subtree-notes-generator-generate-from-clipboard` |
+| Ask each time | `C-u M-x autoslip-subtree-notes-generator-generate` |
+
+`C-u M-x autoslip-subtree-notes-generator-preview` asks for the source too.
+An outline file is only read and is never changed. It does not have to be an org-roam note.
+The clipboard source reads the system clipboard and falls back to the newest entry in the kill ring. This is handy when the outline was drafted in another program.
+
+### Kinds of Notes and Templates
+
+Both commands ask for the kinds of notes, in level order and separated by commas.
+The first kind is for the children of the parent note, the second for the grandchildren, and the last kind repeats for all deeper levels.
+With `hub,plain`, the notes `7.1` and `7.2` are hub notes and everything below them is plain.
+
+The kind `plain` needs no template.
+Any other kind needs a template file with the name of the kind in `autoslip-subtree-notes-generator-templates-directory`.
+
+```elisp
+(setq autoslip-subtree-notes-generator-templates-directory "~/org-roam/templates/")
+```
+
+A template `hub.org` could look like this:
+
+```org
+#+filetags: :hub:
+#+date: ${date}
+* Overview of ${heading}
+* Open questions
+```
+
+The keyword lines of the template go directly below the title, above the ten blank lines.
+The headings of the template go below the `Parent Note` section.
+A template must not hold a `#+title:` line or a property drawer.
+These placeholders are filled in: `${title}` (address and headline), `${heading}` (headline without the address), `${address}`, `${kind}`, and `${date}`.
+
+### Index Lines
+
+A line that starts with `#+LATEX: \index{` and sits directly below a headline is copied to the note, directly below its title.
+Set `autoslip-subtree-notes-generator-copy-index-lines` to nil to leave these lines out.
+
+### Rules and Limits
+
+- Only headlines whose address lies below the address of the parent note become notes. Other headlines are ignored, and so are headlines with an invalid address such as `7.2.3`.
+- Every new note needs a parent note in the outline or in the vault. A headline such as `7.5a` without a note or a headline for `7.5` stops the command before anything is written.
+- An address that appears twice in the outline stops the command.
+- The parent note needs an ID. The command offers to create one when it is missing.
+- Only the `'headings` value of `autoslip-roam-link-storage` is supported.
+- Back up or commit your vault before the first run.
+
+From Lisp, the generate function takes the kinds, a flag to skip the question, a flag for a dry run, and the outline source:
+
+```elisp
+;; Outline in the current note, no question.
+(autoslip-subtree-notes-generator-generate '("hub" "plain") t)
+;; Outline in a file, or in the clipboard.
+(autoslip-subtree-notes-generator-generate '("plain") t nil "~/outline.org")
+(autoslip-subtree-notes-generator-generate '("plain") t nil 'clipboard)
+```
+
 ## Repairing Links
 
 A vault that was built before automatic linking, or edited by hand, can have notes without their parent or child links.
@@ -608,7 +796,7 @@ Only the root note is changed.
 
 ## Testing
 
-The package includes 146 tests: 122 for the core, 16 for the transient menu, and 8 for the browser dashboard.
+The package includes 160 tests: 122 for the core, 16 for the transient menu, 8 for the browser dashboard, and 14 for the subtree note generator.
 
 ### Running Tests from Command Line
 
@@ -633,6 +821,12 @@ make test-nav
 
 # Run the tests of the browser dashboard
 make test-html
+
+# Run the tests of the subtree note generator (no make target yet).
+# Replace the second -L with the directories of org-roam and its dependencies.
+emacs --batch --no-init-file -L . -L ~/.emacs.d/straight/build/org-roam \
+  -l ert -l test-autoslip-subtree-notes-generator.el \
+  -f ert-run-tests-batch-and-exit
 ```
 
 The Makefile looks for org-roam and its dependencies in a straight.el build directory first and in the package.el directories second.
@@ -658,7 +852,8 @@ M-x ert RET ^test-parse RET
 | Category | Tests | Description |
 |----------|-------|-------------|
 | Parsing | 7 | Address parsing |
-| Extraction | 5 | Title extraction |
+| Ancestor check | 3 | Whether one address lies above another |
+| Extraction | 6 | Title extraction, including the refusal of addresses with two periods |
 | Letter sequences | 5 | Alphabet incrementing |
 | Validation | 13 | Address validation |
 | Suggestions | 8 | Child suggestions |
@@ -683,6 +878,7 @@ M-x ert RET ^test-parse RET
 | Index backlink | 5 | `add-backlink-from-root-to-00-index` and root titles |
 | Transient menu | 16 | Roots, orphans, keys, paging, and drawing of every screen (`make test-nav`) |
 | Browser dashboard | 8 | Page structure, escaping, links, and export (`make test-html`) |
+| Subtree note generator | 14 | Outline reading from the note, a file, and the clipboard; kinds, templates, links, repeated runs, and error cases |
 
 ## Info Documentation
 
@@ -807,7 +1003,8 @@ The package is actively maintained and used in the author's daily workflow.
 Core features (automatic bidirectional linking, validation, child-address
 suggestion, cross-reference links, navigation, tree view, chain of thought,
 cross-linked chains of thought, reparenting, and the quiet property-drawer
-storage mode) are covered by 100 ERT tests that run under `make test`.
+storage mode) are covered by 122 ERT tests that run under `make test`.
+The optional files add 38 tests of their own, for a total of 160.
 Feedback and patches are welcome via the issue tracker.
 
 ## Additional considerations for existing org-roam users
@@ -837,6 +1034,7 @@ I added a LaTeX preamble drawer to my note template to provide a compact format 
 
 | Version | Changes | Date |
 |:--------|:--------|:-----|
+| 3.2.0 | Added the subtree note generator (`autoslip-subtree-notes-generator.el`) as an optional file. It writes one linked note for each addressed headline of an outline that sits in the parent note, in a file, or in the clipboard. Fixed `autoslip-roam-regex`, which matched an address with more than one period such as `1.2.3`. Such a title is now treated as a title without an address. Expanded the test suite to 160 tests. | 2026-11-26 |
 | 3.1.0 | Added the transient navigation menu (`autoslip-roam-nav`) and the browser dashboard (`autoslip-roam-html-open`) as optional files. Added `autoslip-roam-repair-links`, `autoslip-roam-add-backlink-from-root-to-00-index`, and the Lisp entry point `autoslip-roam-create-child`. Existing parent and child links are no longer duplicated. Fixed automatic linking of a new note, which did nothing because the note was not yet in the org-roam database when the capture hook ran. The Makefile finds dependencies installed with straight.el. Expanded the test suite to 145 tests. | 2026-11-25 |
 | 3.0.1 | Bug fix and updated tests. | 2026-07-10 |
 | 3.0.0 | Renamed the package from `folgezettel-org-roam` to `autoslip-roam`. This step renamed every public symbol, file, buffer name, mode name, and customization group. Users upgrading from 2.x must update their `require` form, customizations, and any key bindings to the new prefix. Root addresses now canonicalize to `N.` with a trailing period (e.g., `1.`) to match numbered-outline conventions like `1. Crystallography`. Legacy bare-integer titles (`1 Crystallography`) are still recognized and treated as equivalent. | 2026-04-23 |

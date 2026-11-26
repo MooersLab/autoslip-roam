@@ -3,7 +3,7 @@
 ;; Copyright (C) 2026
 
 ;; Author: Blaine Mooers
-;; Version: 3.1.0
+;; Version: 3.2.0
 ;; Package-Requires: ((emacs "28.1") (org-roam "2.0") (transient "0.4.0") (autoslip-roam "3.1.0"))
 ;; Keywords: org-mode, org-roam, zettelkasten, folgezettel
 ;; URL: https://github.com/MooersLab/autoslip-roam

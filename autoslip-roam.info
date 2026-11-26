@@ -1,7 +1,7 @@
 This is autoslip-roam.info, produced by makeinfo version 7.1 from
 autoslip-roam.texi.
 
-This manual is for Autoslip Roam (version 3.1.0).
+This manual is for Autoslip Roam (version 3.2.0).
 
    Copyright © 2025 Blaine Mooers.
 
@@ -25,7 +25,7 @@ This manual describes Autoslip Roam, an Emacs package that provides
 automatic bidirectional link generation for org-roam notes using
 folgezettel (Luhmann-style) indexing.
 
-   This manual is for Autoslip Roam (version 3.1.0).
+   This manual is for Autoslip Roam (version 3.2.0).
 
    Copyright © 2025 Blaine Mooers.
 
@@ -46,6 +46,7 @@ folgezettel (Luhmann-style) indexing.
 * Commands::                    Interactive commands reference.
 * Navigation Menu::             Walking the hierarchy in a transient menu.
 * Browser Dashboard::           The hierarchy as one HTML page.
+* Subtree Note Generator::      Notes from an outline of headlines.
 * Repairing Links::             Adding links that are missing.
 * Testing::                     Running the test suite.
 * Troubleshooting::             Common issues and solutions.
@@ -105,6 +106,8 @@ canonical ‘1.’ form.
    • Repair command that adds every missing parent or child link in the
      vault
    • Command that links a root note back to the index of indices
+   • Subtree note generator that turns an outline of addressed headlines
+     into linked notes in one step
    • Lisp entry point for creating a child note from other packages
 
 
@@ -697,7 +700,7 @@ and ‘1 4’.  The fixed commands use punctuation, so they never collide
 with the keys of the children.
 
 
-File: autoslip-roam.info,  Node: Browser Dashboard,  Next: Repairing Links,  Prev: Navigation Menu,  Up: Top
+File: autoslip-roam.info,  Node: Browser Dashboard,  Next: Subtree Note Generator,  Prev: Navigation Menu,  Up: Top
 
 9 Browser Dashboard
 *******************
@@ -742,9 +745,201 @@ application.  When that is not set up, use one of the other values:
      (setq autoslip-roam-html-link-type nil)   ; a page without links
 
 
-File: autoslip-roam.info,  Node: Repairing Links,  Next: Testing,  Prev: Browser Dashboard,  Up: Top
+File: autoslip-roam.info,  Node: Subtree Note Generator,  Next: Repairing Links,  Prev: Browser Dashboard,  Up: Top
 
-10 Repairing Links
+10 Subtree Note Generator
+*************************
+
+The command ‘autoslip-roam-insert-next-child’ creates one child note at
+a time.  The subtree note generator creates a whole branch at once.  You
+write the branch as an outline of addressed headlines, and one command
+turns each headline into a note with its parent and child links in
+place.  Think of the outline as the blueprint and of the generator as
+the builder.
+
+   The generator is in the optional file
+‘autoslip-subtree-notes-generator.el’.
+
+     (require 'autoslip-subtree-notes-generator)
+
+10.1 Tutorial
+=============
+
+This tutorial builds a small branch below the root note ‘7.
+Crystallography’.  Try it in a test vault first.
+
+  1. Write the outline in the parent note.  Visit the parent note and
+     add one headline per planned note.  Each headline is stars, a
+     folgezettel address, and a title.
+
+          :PROPERTIES:
+          :ID:       0d4c6a52-6c1b-4a8e-9a3e-2f5d7c1b9e10
+          :END:
+          #+title: 7. Crystallography
+
+          * Outline
+          ** 7.1 Crystal growth
+          *** 7.1a Vapor diffusion
+          *** 7.1b Screening strategies
+          ** 7.2 Symmetry and space groups
+          *** 7.2a Screw axes
+
+     The address decides the parent of each note.  The number of stars
+     does not, so the outline can start at any level.
+
+  2. Preview the plan with ‘M-x
+     autoslip-subtree-notes-generator-preview’.  Press ‘RET’ at the
+     prompt for the kinds of notes to accept ‘plain’.  The ‘*Autoslip
+     Subtree Notes*’ buffer lists the notes that would be written.
+     Nothing is written at this step.
+
+          Plan: 5 notes below 7.
+          Outline from this note
+
+          7.1            plain      7_1_crystal_growth.org
+          7.1a           plain      7_1a_vapor_diffusion.org
+          7.1b           plain      7_1b_screening_strategies.org
+          7.2            plain      7_2_symmetry_and_space_groups.org
+          7.2a           plain      7_2a_screw_axes.org
+
+  3. Generate the notes with ‘M-x
+     autoslip-subtree-notes-generator-generate’.  The command shows the
+     same plan and asks one question.  Answer ‘y’ to write the notes.
+     The file names follow the parent note.  When its file name starts
+     with an org-roam timestamp, the new file names do too.
+
+  4. Look at the result.  Each new note has a new ID, the headline as
+     its title, ten blank lines for your text, and a link back to its
+     parent.  A note with children of its own also lists them.
+
+          :PROPERTIES:
+          :ID:       8542a59c-1c8d-48d6-b1fe-21edd4fd8449
+          :END:
+          #+title: 7.1 Crystal growth
+
+     Ten blank lines follow the title, and then:
+
+          * Parent Note
+          [[id:0d4c6a52-6c1b-4a8e-9a3e-2f5d7c1b9e10][Parent note]]
+
+          * Child Notes
+          [[id:3fa0db8c-96b2-487c-ae5c-cd5f38565974][7.1a Vapor diffusion]]
+          [[id:5b0e7c39-2c55-4d0b-8a57-0f3f1f6f2a11][7.1b Screening strategies]]
+
+     The parent note gains a ‘Child Notes’ section with links to ‘7.1’
+     and ‘7.2’.  Its outline is left as it is.  The new notes are in the
+     org-roam database at once.
+
+  5. Grow the branch later.  Add more headlines to the outline and run
+     the command again.  A note whose address is already in the vault is
+     never overwritten.  It is skipped, so only the new headlines become
+     notes.
+
+10.2 Outline in a File or in the Clipboard
+==========================================
+
+The outline does not have to sit in the parent note.  In every case, run
+the command from the buffer of the parent note, because the new notes
+are linked to that note.
+
+‘autoslip-subtree-notes-generator-generate’
+     Read the outline from the parent note.  With ‘C-u’, ask where the
+     outline is.
+‘autoslip-subtree-notes-generator-generate-from-file’
+     Read the outline from a file.  The file is only read and is never
+     changed.  It does not have to be an org-roam note.
+‘autoslip-subtree-notes-generator-generate-from-clipboard’
+     Read the outline from the system clipboard, or from the newest
+     entry in the kill ring when the clipboard is empty.
+‘autoslip-subtree-notes-generator-preview’
+     Show the plan and write nothing.  With ‘C-u’, ask where the outline
+     is.
+
+10.3 Kinds of Notes and Templates
+=================================
+
+The commands ask for the kinds of notes, in level order and separated by
+commas.  The first kind is for the children of the parent note, the
+second for the grandchildren, and the last kind repeats for all deeper
+levels.  With ‘hub,plain’, the notes ‘7.1’ and ‘7.2’ are hub notes and
+everything below them is plain.  The default answer comes from
+‘autoslip-subtree-notes-generator-kinds’.
+
+   The kind ‘plain’ needs no template.  Any other kind needs a template
+file with the name of the kind in
+‘autoslip-subtree-notes-generator-templates-directory’.  A template
+‘hub.org’ could look like this:
+
+     #+filetags: :hub:
+     #+date: ${date}
+     * Overview of ${heading}
+     * Open questions
+
+   The keyword lines of the template go directly below the title, above
+the ten blank lines.  The headings of the template go below the ‘Parent
+Note’ section.  A template must not hold a ‘#+title:’ line or a property
+drawer.  These placeholders are filled in:
+
+‘${title}’
+     The address and the headline.
+‘${heading}’
+     The headline without the address.
+‘${address}’
+     The folgezettel address.
+‘${kind}’
+     The kind of the note.
+‘${date}’
+     The date of today.
+
+10.4 Options
+============
+
+‘autoslip-subtree-notes-generator-kinds’
+     Default kinds of notes in level order.  Default: ‘("plain")’
+
+‘autoslip-subtree-notes-generator-templates-directory’
+     Directory of the template files.  Default: ‘nil’
+
+‘autoslip-subtree-notes-generator-blank-lines’
+     Number of blank lines between the title block and the parent
+     heading.  Default: ‘10’
+
+‘autoslip-subtree-notes-generator-copy-index-lines’
+     Whether to copy the lines that start with ‘#+LATEX: \index{’ and
+     sit directly below a headline to the note.  Default: ‘t’
+
+10.5 Rules and Limits
+=====================
+
+   • Only headlines whose address lies below the address of the parent
+     note become notes.  Other headlines are ignored, and so are
+     headlines with an invalid address such as ‘7.2.3’.
+   • Every new note needs a parent note in the outline or in the vault.
+     A headline such as ‘7.5a’ without a note or a headline for ‘7.5’
+     stops the command before anything is written.
+   • An address that appears twice in the outline stops the command.
+   • The parent note needs an ID. The command offers to create one when
+     it is missing.
+   • Only the ‘headings’ value of ‘autoslip-roam-link-storage’ is
+     supported.
+   • Back up or commit your vault before the first run.
+
+10.6 Use from Lisp
+==================
+
+The generate function takes the kinds, a flag to skip the question, a
+flag for a dry run, and the outline source.
+
+     ;; Outline in the current note, no question.
+     (autoslip-subtree-notes-generator-generate '("hub" "plain") t)
+     ;; Outline in a file, or in the clipboard.
+     (autoslip-subtree-notes-generator-generate '("plain") t nil "~/outline.org")
+     (autoslip-subtree-notes-generator-generate '("plain") t nil 'clipboard)
+
+
+File: autoslip-roam.info,  Node: Repairing Links,  Next: Testing,  Prev: Subtree Note Generator,  Up: Top
+
+11 Repairing Links
 ******************
 
 A vault that was built before automatic linking, or edited by hand, can
@@ -763,7 +958,7 @@ once.  Notes whose parent does not exist are skipped, because there is
 nothing to link them to.  Back up or commit your vault before the first
 repair.
 
-10.1 Linking Root Notes to the Index
+11.1 Linking Root Notes to the Index
 ====================================
 
 A root note has no parent, so it has no parent link.  To link a root
@@ -781,17 +976,20 @@ note.  Only the root note is changed.
 
 File: autoslip-roam.info,  Node: Testing,  Next: Troubleshooting,  Prev: Repairing Links,  Up: Top
 
-11 Testing
+12 Testing
 **********
 
-The package includes 145 tests: 121 for the core, 16 for the navigation
-menu, and 8 for the browser dashboard.  The last two groups run with
-‘make test-nav’ and ‘make test-html’.
+The package includes 160 tests: 122 for the core, 16 for the navigation
+menu, 8 for the browser dashboard, and 14 for the subtree note
+generator.  The second and third groups run with ‘make test-nav’ and
+‘make test-html’.  The tests of the subtree note generator are in
+‘test-autoslip-subtree-notes-generator.el’ and are loaded like the other
+test files.
 
-11.1 Running Tests
+12.1 Running Tests
 ==================
 
-11.1.1 From Command Line
+12.1.1 From Command Line
 ------------------------
 
      # Run all tests
@@ -806,7 +1004,7 @@ menu, and 8 for the browser dashboard.  The last two groups run with
      # Run with verbose output
      make test-verbose
 
-11.1.2 From Within Emacs
+12.1.2 From Within Emacs
 ------------------------
 
      M-x ert RET t RET
@@ -816,22 +1014,24 @@ menu, and 8 for the browser dashboard.  The last two groups run with
      (load-file "test-autoslip-roam.el")
      (ert-run-tests-interactively "^test-parse")
 
-11.2 Test Categories
+12.2 Test Categories
 ====================
 
 Category               Count   Description
 ---------------------------------------------------------------------------
-Parsing                7       Address parsing functions
-Extraction             5       Title extraction
+Parsing                7       Address parsing
+Ancestor check         3       Whether one address lies above another
+Extraction             6       Title extraction, including the refusal
+                               of addresses with two periods
 Letter sequences       5       Alphabet incrementing
 Validation             13      Address validation
-Suggestions            8       Child address suggestions
-Parent lookup          6       ‘find-parent’ and ‘index-exists’ helpers
-Link insertion         6       Link creation in files
-Integration            2       Full workflow tests
+Suggestions            8       Child suggestions
+Parent lookup          6       Find-parent and index-exists helpers
+Link insertion         6       File operations
+Integration            2       Full workflows
 Edge cases             5       Boundary conditions
-Regression             5       Previously fixed bugs
-Performance            2       Speed benchmarks
+Regression             5       Fixed bugs
+Performance            2       Speed tests
 Address helpers        5       Depth, tokens, canonical ordering
 Children lookup        2       Direct-children discovery
 Rename helpers         4       Address-driven file renaming
@@ -840,12 +1040,28 @@ Reparent helpers       3       Title, backlink, and forward-link
                                rewrites
 Tree view              2       ‘show-tree’ buffer contents
 Navigation             3       ‘goto-parent’ and ‘list-children’
-Chain of thought       9       Ancestor walk, org-list rendering,
-                               show/insert
+                               commands
+Chain of thought       9       Ancestor walk, org-list rendering, ‘show’
+                               and ‘insert’
 Cross-linked chains    5       Cross-link id extraction and
                                ‘show-crosslinked-chains’
+Child creation         5       ‘create-child’ and linking of a note that
+                               is not yet in the database
+Duplicate guard        3       Existing parent and child links are left
+                               alone
+Link repair            5       ‘repair-links’ scan, report,
+                               confirmation, and both storage modes
+Index backlink         5       ‘add-backlink-from-root-to-00-index’ and
+                               root titles
+Transient menu         16      Roots, orphans, keys, paging, and drawing
+                               of every screen (‘make test-nav’)
+Browser dashboard      8       Page structure, escaping, links, and
+                               export (‘make test-html’)
+Subtree note           14      Outline reading from the note, a file,
+generator                      and the clipboard; kinds, templates,
+                               links, repeated runs, and error cases
 
-11.3 Test File Structure
+12.3 Test File Structure
 ========================
 
 The test file ‘test-autoslip-roam.el’ includes:
@@ -858,10 +1074,10 @@ The test file ‘test-autoslip-roam.el’ includes:
 
 File: autoslip-roam.info,  Node: Troubleshooting,  Next: Index,  Prev: Testing,  Up: Top
 
-12 Troubleshooting
+13 Troubleshooting
 ******************
 
-12.1 Parent Note Not Found
+13.1 Parent Note Not Found
 ==========================
 
 If the parent note is not found:
@@ -871,14 +1087,14 @@ If the parent note is not found:
      title
   3. Run ‘M-x org-roam-db-sync’ to update the database
 
-12.2 Links Not Appearing in Backlinks Buffer
+13.2 Links Not Appearing in Backlinks Buffer
 ============================================
 
 Ensure database sync is enabled:
 
      (setq autoslip-roam-sync-db-before-queries t)
 
-12.3 Invalid Address Errors
+13.3 Invalid Address Errors
 ===========================
 
 Use validation to check addresses:
@@ -890,7 +1106,7 @@ Use validation to check addresses:
    • Uppercase letters (‘1.2A’) - use lowercase only
    • Special characters - only digits, lowercase letters, and one period
 
-12.4 Mode Not Working
+13.4 Mode Not Working
 =====================
 
 Verify the mode is enabled:
@@ -915,28 +1131,42 @@ A.1 Concept Index
 * Menu:
 
 * address format:                        Folgezettel Addresses.
-                                                               (line  6)
-* automatic linking:                     Usage.                (line  9)
-* cross-references:                      Usage.                (line 67)
-* dashboard:                             Browser Dashboard.    (line  6)
-* ERT:                                   Testing.              (line  6)
-* folgezettel:                           Introduction.         (line  6)
+                                                              (line   6)
+* automatic linking:                     Usage.               (line   9)
+* clipboard:                             Subtree Note Generator.
+                                                              (line  94)
+* cross-references:                      Usage.               (line  67)
+* dashboard:                             Browser Dashboard.   (line   6)
+* ERT:                                   Testing.             (line   6)
+* folgezettel:                           Introduction.        (line   6)
+* headlines, notes from:                 Subtree Note Generator.
+                                                              (line   6)
 * hierarchy:                             Folgezettel Addresses.
-                                                               (line  5)
-* HTML:                                  Browser Dashboard.    (line  6)
-* index of indices:                      Repairing Links.      (line 25)
-* Lisp entry point:                      Usage.                (line 43)
-* Luhmann:                               Introduction.         (line  6)
-* missing links:                         Repairing Links.      (line  6)
-* navigation menu:                       Navigation Menu.      (line  6)
-* org-protocol:                          Browser Dashboard.    (line 35)
-* orphan:                                Navigation Menu.      (line 77)
-* repair:                                Repairing Links.      (line  6)
-* root note:                             Navigation Menu.      (line 77)
-* testing:                               Testing.              (line  6)
-* transient menu:                        Navigation Menu.      (line  6)
-* troubleshooting:                       Troubleshooting.      (line  9)
-* Zettelkasten:                          Introduction.         (line  6)
+                                                              (line   5)
+* HTML:                                  Browser Dashboard.   (line   6)
+* index of indices:                      Repairing Links.     (line  25)
+* kinds of notes:                        Subtree Note Generator.
+                                                              (line 114)
+* Lisp entry point:                      Usage.               (line  43)
+* Luhmann:                               Introduction.        (line   6)
+* missing links:                         Repairing Links.     (line   6)
+* navigation menu:                       Navigation Menu.     (line   6)
+* org-protocol:                          Browser Dashboard.   (line  35)
+* orphan:                                Navigation Menu.     (line  77)
+* outline:                               Subtree Note Generator.
+                                                              (line   6)
+* outline file:                          Subtree Note Generator.
+                                                              (line  94)
+* repair:                                Repairing Links.     (line   6)
+* root note:                             Navigation Menu.     (line  77)
+* subtree note generator:                Subtree Note Generator.
+                                                              (line   6)
+* templates:                             Subtree Note Generator.
+                                                              (line 114)
+* testing:                               Testing.             (line   6)
+* transient menu:                        Navigation Menu.     (line   6)
+* troubleshooting:                       Troubleshooting.     (line   9)
+* Zettelkasten:                          Introduction.        (line   6)
 
 A.2 Function Index
 ==================
@@ -973,6 +1203,14 @@ A.2 Function Index
 * autoslip-roam-show-chain-of-thought:   Commands.            (line  77)
 * autoslip-roam-show-crosslinked-chains: Commands.            (line  92)
 * autoslip-roam-show-tree:               Commands.            (line  54)
+* autoslip-subtree-notes-generator-generate: Subtree Note Generator.
+                                                              (line   6)
+* autoslip-subtree-notes-generator-generate-from-clipboard: Subtree Note Generator.
+                                                              (line   6)
+* autoslip-subtree-notes-generator-generate-from-file: Subtree Note Generator.
+                                                              (line   6)
+* autoslip-subtree-notes-generator-preview: Subtree Note Generator.
+                                                              (line   6)
 * customize-group:                       Customization.       (line   6)
 * package-install:                       Installation.        (line  15)
 
@@ -980,19 +1218,20 @@ A.2 Function Index
 
 Tag Table:
 Node: Top618
-Node: Introduction2088
-Node: Installation4559
-Node: Quick Start5665
-Node: Folgezettel Addresses6481
-Node: Usage8769
-Node: Customization11216
-Node: Commands15883
-Node: Navigation Menu22126
-Node: Browser Dashboard25244
-Node: Repairing Links27225
-Node: Testing28848
-Node: Troubleshooting31425
-Node: Index32637
+Node: Introduction2156
+Node: Installation4737
+Node: Quick Start5843
+Node: Folgezettel Addresses6659
+Node: Usage8947
+Node: Customization11394
+Node: Commands16061
+Node: Navigation Menu22304
+Node: Browser Dashboard25422
+Node: Subtree Note Generator27410
+Node: Repairing Links34988
+Node: Testing36616
+Node: Troubleshooting40498
+Node: Index41710
 
 End Tag Table
 
