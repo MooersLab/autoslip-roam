@@ -95,10 +95,18 @@ If nil, insert at the end of the buffer."
   :group 'autoslip-roam)
 
 (defcustom autoslip-roam-regex
-  "\\b\\([0-9]+\\(?:[.][0-9]+\\)*\\(?:[a-z]+\\(?:[0-9]+\\)?\\)*\\)\\(?:[^a-z0-9]\\|$\\)"
+  "\\(?:\\`\\|[^0-9a-z.]\\)\\([0-9]+\\(?:[.][0-9]+\\)?\\(?:[a-z]+\\(?:[0-9]+\\)?\\)*\\)\\(?:[^a-z0-9.]\\|[.]\\(?:[^0-9]\\|$\\)\\|$\\)"
   "Regular expression to match folgezettel patterns.
-Matches patterns like: 1, 1.2, 1.13, 1.2a, 1.2aa, 1.2a15, 1.2a3c5d7a
-The pattern ensures complete matches by requiring non-alphanumeric or end of string after the pattern."
+Matches patterns like: 1, 1., 1.2, 1.13, 1.2a, 1.2aa, 1.2a15, 1.2a3c5d7a
+The first group holds the address.
+An address has at most one period, the one after the root number, so a
+string with a second period-number part such as 1.2.3 does not match at
+all, neither as a whole nor in part (not as 1.2 and not as 2.3).
+The pattern ensures complete matches by requiring the start of the string
+or a character that is not alphanumeric and not a period before the
+address, and a non-alphanumeric character or the end of the string after
+it.  A period after the address is accepted only when no digit follows
+it, as in the root title \"1. Topic\"."
   :type 'regexp
   :group 'autoslip-roam)
 
