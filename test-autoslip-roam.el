@@ -186,6 +186,22 @@ Bare-integer roots are canonicalized to the trailing-period form."
   (should (equal "1." (autoslip-roam--extract-from-title "1 Chapter with 42 pages")))
   (should (equal "2.3" (autoslip-roam--extract-from-title "2.3 Analysis of Year 2024"))))
 
+(ert-deftest test-extract-from-title-multiple-periods ()
+  "Test that an address with more than one period is not extracted.
+Neither the whole string nor a part of it (1.2 or 2.3) may match."
+  (should (equal nil (autoslip-roam--extract-from-title "1.2.3 Bad address")))
+  (should (equal nil (autoslip-roam--extract-from-title "1.2.3")))
+  (should (equal nil (autoslip-roam--extract-from-title "1.2.3a Bad address")))
+  (should (equal nil (autoslip-roam--extract-from-title "1.2a.3 Bad address")))
+  (should (equal nil (autoslip-roam--extract-from-title "Version 1.2.3 notes")))
+  (should (equal nil (autoslip-roam--parse-address "1.2.3")))
+  ;; A valid leading address still wins over a later invalid one.
+  (should (equal "2.3" (autoslip-roam--extract-from-title "2.3 About 1.2.3")))
+  ;; A period that ends a sentence does not spoil the address before it.
+  (should (equal "1.2" (autoslip-roam--extract-from-title "See 1.2. Then")))
+  ;; The index of indices keeps its address.
+  (should (equal "00.0" (autoslip-roam--extract-from-title "00.0 Index of Indices"))))
+
 ;;; ============================================================================
 ;;; Unit Tests: autoslip-roam--next-letter-sequence
 ;;; ============================================================================
