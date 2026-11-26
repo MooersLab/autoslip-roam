@@ -608,7 +608,7 @@ Only the root note is changed.
 
 ## Testing
 
-The package includes 145 tests: 121 for the core, 16 for the transient menu, and 8 for the browser dashboard.
+The package includes 146 tests: 122 for the core, 16 for the transient menu, and 8 for the browser dashboard.
 
 ### Running Tests from Command Line
 
